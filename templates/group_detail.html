@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}{{ group['name'] }} - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row fade-in">
+    <!-- Header -->
+    <div class="col-12 mb-4">
+        <div class="card bg-dark text-white shadow-lg border-0 overflow-hidden">
+            <div class="card-body p-5 position-relative">
+                <div class="position-absolute top-0 end-0 p-3 opacity-25">
+                    <i class="fas fa-users fa-10x"></i>
+                </div>
+                <div class="position-relative">
+                    <span class="badge bg-primary mb-2">{{ group['category'] }}</span>
+                    <h1 class="display-4 fw-bold">{{ group['name'] }}</h1>
+                    <p class="lead opacity-75" style="max-width: 600px;">{{ group['description'] }}</p>
+                    <div class="d-flex align-items-center mt-4">
+                        <div class="d-flex align-items-center me-4">
+                            <i class="fas fa-crown me-2 text-warning"></i>
+                            <span>Created by Admin/User {{ group['created_by'] }}</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="far fa-calendar me-2"></i>
+                            <span>{{ group['created_date'][:10] }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% if is_lead or user['role'] == 'admin' %}
+            <div class="position-absolute top-0 end-0 p-4">
+                <form action="{{ url_for('delete_group', group_id=group['id']) }}" method="post"
+                    onsubmit="return confirm('Are you sure you want to delete this group? This cannot be undone.');">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt me-2"></i>Delete Group
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="col-lg-8">
+    <!-- Tasks Section -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 fw-bold"><i class="fas fa-tasks me-2 text-primary"></i>Tasks</h5>
+            {% if is_lead or user['role'] == 'admin' %}
+            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+                <i class="fas fa-plus"></i> New Task
+            </button>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            {% if tasks %}
+            <div class="list-group list-group-flush">
+                {% for task in tasks %}
+                <div class="list-group-item p-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="form-check">
+                            {% if task['status'] == 'completed' %}
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <span class="text-decoration-line-through text-muted">{{ task['title'] }}</span>
+                            {% else %}
+                            <form action="{{ url_for('complete_task', group_id=group['id'], task_id=task['id']) }}"
+                                method="post" class="d-inline">
+                                <button type="submit" class="btn btn-link p-0 text-dark text-decoration-none">
+                                    <i class="far fa-circle me-2 text-muted"></i>{{ task['title'] }}
+                                </button>
+                            </form>
+                            {% endif %}
+                            <div class="small text-muted ms-4 ps-1 mt-1">{{ task['description'] }}</div>
+                        </div>
+                        <div class="text-end">
+                            {% if task['assigned_to'] %}
+                            <span class="badge bg-light text-dark border rounded-pill">
+                                <i class="fas fa-user me-1"></i> {{ task['assignee_name'] }}
+                            </span>
+                            {% else %}
+                            <span class="badge bg-light text-muted border rounded-pill">Unassigned</span>
+                            {% endif %}
+                            {% if task['status'] == 'completed' %}
+                            <div class="mt-1 small">
+                                <a href="https://lora.algokit.io/testnet/transaction/{{ task['tx_id'] }}"
+                                    target="_blank" class="text-muted">
+                                    <i class="fas fa-link"></i> Proof
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <p class="text-muted mb-0">No tasks created yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Milestones Section -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 fw-bold"><i class="fas fa-flag-checkered me-2 text-success"></i>Milestones</h5>
+            {% if is_lead or user['role'] == 'admin' %}
+            <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#addMilestoneModal">
+                <i class="fas fa-plus"></i> New Milestone
+            </button>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {% if milestones %}
+            <ul class="timeline list-unstyled">
+                {% for m in milestones %}
+                <li
+                    class="position-relative pb-4 ps-4 border-start {{ 'border-success' if m['completed_date'] else 'border-light' }}">
+                    <div class="position-absolute start-0 top-0 translate-middle rounded-circle bg-{{ 'success' if m['completed_date'] else 'light border' }}"
+                        style="width: 12px; height: 12px;"></div>
+                    <h6 class="fw-bold mb-1">{{ m['title'] }}</h6>
+                    <p class="text-muted small mb-2">{{ m['description'] }}</p>
+                    {% if m['completed_date'] %}
+                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill">
+                        <i class="fas fa-check me-1"></i> Completed: {{ m['completed_date'][:10] }}
+                    </span>
+                    {% else %}
+                    <span class="badge bg-light text-dark border rounded-pill">
+                        Target: {{ m['target_date'] }}
+                    </span>
+                    <form action="{{ url_for('complete_milestone', mid=m['id']) }}" method="post" class="d-inline ms-2">
+                        <button type="submit" class="btn btn-link btn-sm p-0">Mark Complete</button>
+                    </form>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="text-center py-5">
+                <p class="text-muted mb-0">No milestones set.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="col-lg-4">
+    <!-- Members Card -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0 fw-bold">Team Members</h5>
+        </div>
+        <div class="card-body p-0">
+            <ul class="list-group list-group-flush">
+                {% for member in members %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-light rounded-circle p-2 me-3 text-center" style="width: 40px; height: 40px;">
+                            <i class="fas fa-user text-secondary"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-bold">{{ member['name'] }}</h6>
+                            <small class="text-muted">
+                                {{ member['role']|title }}
+                                {% if member['status'] == 'invited' %}
+                                <span class="badge bg-warning text-dark ms-2">Invited</span>
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+                <li class="list-group-item text-center">
+                    <button class="btn btn-sm btn-link text-decoration-none" data-bs-toggle="modal"
+                        data-bs-target="#inviteModal">
+                        <i class="fas fa-user-plus me-1"></i> Invite Member
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Modals (Simplified for brevity) -->
+<div class="modal fade" id="addTaskModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" action="{{ url_for('create_task', group_id=group['id']) }}" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Task</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Title</label>
+                    <input type="text" name="title" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Assign To</label>
+                    <select name="assigned_to" class="form-select">
+                        <option value="">Unassigned</option>
+                        {% for member in members %}
+                        <option value="{{ member['id'] }}">{{ member['name'] }} ({{ member['student_id'] }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-control"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Add Task</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="addMilestoneModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" action="{{ url_for('create_milestone', group_id=group['id']) }}" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Milestone</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Title</label>
+                    <input type="text" name="title" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Target Date</label>
+                    <input type="date" name="target_date" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-success">Set Milestone</button>
+            </div>
+        </form>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="inviteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" action="{{ url_for('invite_member', group_id=group['id']) }}" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Invite Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Student ID</label>
+                    <input type="text" name="student_id" class="form-control" placeholder="Enter Student ID" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Invite</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

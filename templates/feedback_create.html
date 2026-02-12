@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Create Feedback Form - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center fade-in">
+    <div class="col-lg-8">
+        <div class="card shadow border-0">
+            <div class="card-header bg-white border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-light rounded-circle me-3"><i
+                            class="fas fa-arrow-left"></i></a>
+                    <h3 class="mb-0 fw-bold">New Feedback Form</h3>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                <form method="post" id="createForm">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Form Title</label>
+                        <input type="text" name="title" class="form-control form-control-lg"
+                            placeholder="e.g. Course Evaluation Spring 2024" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea name="description" class="form-control" rows="3"
+                            placeholder="Please provide your honest feedback..."></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="allow_anonymous" id="allowAnon"
+                                checked>
+                            <label class="form-check-label fw-medium" for="allowAnon">Allow Anonymous Responses</label>
+                        </div>
+                        <div class="form-text mt-1 text-muted small">
+                            <i class="fas fa-user-secret me-1"></i> Anonymous responses are not linked to user IDs on
+                            the blockchain.
+                        </div>
+                    </div>
+
+                    <hr class="my-5">
+
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="fw-bold mb-0">Questions</h5>
+                        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill"
+                            onclick="addQuestion()">
+                            <i class="fas fa-plus me-1"></i> Add Question
+                        </button>
+                    </div>
+
+                    <div id="questionsContainer">
+                        <!-- Questions will be added here -->
+                        <div class="card bg-light border-0 mb-3 question-item">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <h6 class="fw-bold text-muted">Question 1</h6>
+                                </div>
+                                <div class="mb-3">
+                                    <input type="text" name="questions" class="form-control"
+                                        placeholder="Enter your question here" required>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <select name="question_types" class="form-select form-select-sm">
+                                            <option value="text">Text Answer</option>
+                                            <option value="rating">Rating (1-5)</option>
+                                            <option value="yesno">Yes/No</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 d-flex align-items-center">
+                                        <div class="form-check form-switch ms-2">
+                                            <input class="form-check-input" type="checkbox" name="question_required"
+                                                checked>
+                                            <label class="form-check-label small">Required</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-5">
+                        <button type="submit" class="btn btn-success btn-lg">Create Form</button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-light">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    let qCount = 1;
+    function addQuestion() {
+        qCount++;
+        const container = document.getElementById('questionsContainer');
+        const div = document.createElement('div');
+        div.className = 'card bg-light border-0 mb-3 question-item fade-in';
+        div.innerHTML = `
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <h6 class="fw-bold text-muted">Question ${qCount}</h6>
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="this.closest('.question-item').remove()"><i class="fas fa-trash"></i></button>
+                </div>
+                <div class="mb-3">
+                    <input type="text" name="questions" class="form-control" placeholder="Enter your question here" required>
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <select name="question_types" class="form-select form-select-sm">
+                            <option value="text">Text Answer</option>
+                            <option value="rating">Rating (1-5)</option>
+                            <option value="yesno">Yes/No</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-center">
+                        <div class="form-check form-switch ms-2">
+                            <input class="form-check-input" type="checkbox" name="question_required" checked>
+                            <label class="form-check-label small">Required</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.appendChild(div);
+    }
+</script>
+{% endblock %}
+{% endblock %}

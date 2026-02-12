@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Results: {{ form['title'] }} - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row fade-in">
+    <div class="col-12 mb-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Results</li>
+            </ol>
+        </nav>
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h2 class="fw-bold mb-1">{{ form['title'] }}</h2>
+                <div class="text-muted">
+                    <span class="badg bg-secondary text-white rounded-pill px-2 py-1 small me-2">Closed</span>
+                    Results Overview
+                </div>
+            </div>
+            {% if form['is_active'] %}
+            <button onclick="closeForm({{ form['id'] }})" class="btn btn-danger btn-sm">
+                <i class="fas fa-lock me-1"></i> Close Form
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm border-0 h-100 bg-primary text-white">
+            <div class="card-body text-center p-4">
+                <h5 class="text-uppercase opacity-75 small fw-bold">Total Verified Responses</h5>
+                <h1 class="display-3 fw-bold">{{ response_count }}</h1>
+                <i class="fas fa-user-check opacity-50 fa-2x"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm border-0 h-100 bg-secondary text-white">
+            <div class="card-body text-center p-4">
+                <h5 class="text-uppercase opacity-75 small fw-bold">Anonymous Responses</h5>
+                <h1 class="display-3 fw-bold">{{ anon_response_count }}</h1>
+                <i class="fas fa-user-secret opacity-50 fa-2x"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Questions Results -->
+    <div class="col-12">
+        {% for q_id, data in results.items() %}
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold">{{ loop.index }}. {{ data['question'] }}</h5>
+            </div>
+            <div class="card-body">
+                {% if data['responses'] %}
+                <ul class="list-group list-group-flush">
+                    {% for resp in data['responses'] %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span>{{ resp['response_text'] }}</span>
+                            {% if resp['tx_id'] %}
+                            <br>
+                            <small class="text-muted" style="font-size: 0.75rem;">
+                                <i class="fas fa-link me-1"></i>
+                                <a href="https://lora.algokit.io/testnet/transaction/{{ resp['tx_id'] }}"
+                                    target="_blank" class="text-decoration-none text-muted">
+                                    Tx: {{ resp['tx_id'][:8] }}...
+                                </a>
+                            </small>
+                            {% endif %}
+                        </div>
+                        {% if resp['count'] is defined %}
+                        <span class="badge bg-light text-dark border rounded-pill">{{ resp['count'] }} users</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted text-center py-3 mb-0">No responses yet.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    function closeForm(formId) {
+        if (confirm('Are you sure you want to close this form? access will be disabled.')) {
+            fetch(`/feedback/${formId}/close`, { method: 'PUT' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) location.reload();
+                });
+        }
+    }
+</script>
+{% endblock %}
+{% endblock %}

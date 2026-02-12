@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Create Group - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center fade-in">
+    <div class="col-lg-6">
+        <div class="card shadow border-0">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <div class="bg-success bg-opacity-10 d-inline-block p-4 rounded-circle">
+                        <i class="fas fa-users-cog fa-3x text-success"></i>
+                    </div>
+                    <h3 class="fw-bold mt-3">Start a New Group</h3>
+                    <p class="text-muted">Create a collaborative space for your team.</p>
+                </div>
+
+                <form method="post">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Group Name</label>
+                        <input type="text" name="name" class="form-control form-control-lg" placeholder="Project Alpha"
+                            required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea name="description" class="form-control" rows="3"
+                            placeholder="What will this group work on?"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Category</label>
+                        <input type="text" name="category" class="form-control"
+                            placeholder="e.g. Study Group, Hackathon Team">
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">Create Group</button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-light">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

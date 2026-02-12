@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Report: {{ course_code }} - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row fade-in">
+    <div class="col-12 mb-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('attendance_list') }}">Attendance</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Report</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold">Attendance Report: <span class="text-primary">{{ course_code }}</span></h2>
+    </div>
+
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h5 class="card-title text-muted text-uppercase small fw-bold">Session Overview</h5>
+                <h1 class="display-4 fw-bold mb-0 text-center py-4">{{ sessions|length }}</h1>
+                <p class="text-muted text-center">Total Sessions Conducted</p>
+                <div class="d-grid">
+                    <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#sessionList">
+                        Show Sessions <i class="fas fa-chevron-down ms-1"></i>
+                    </button>
+                    <div class="collapse mt-2" id="sessionList">
+                        <ul class="list-group list-group-flush small">
+                            {% for session in sessions %}
+                            <li class="list-group-item bg-transparent d-flex justify-content-between">
+                                <span>{{ session['session_date'] }}</span>
+                                <span class="text-muted">{{ session['session_time'] }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold">Student Summary</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 500px;">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="bg-light sticky-top">
+                            <tr>
+                                <th class="ps-4">Student Name</th>
+                                <th>ID</th>
+                                <th class="text-center">Present</th>
+                                <th class="text-center">%</th>
+                                <th class="pe-4">Progress</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in summary %}
+                            {% set percentage = (student['present_count'] / student['total_sessions'] * 100)|int if
+                            student['total_sessions'] > 0 else 0 %}
+                            <tr>
+                                <td class="ps-4 fw-medium">{{ student['name'] }}</td>
+                                <td class="text-muted small">{{ student['student_id'] }}</td>
+                                <td class="text-center fw-bold">{{ student['present_count'] }}/{{
+                                    student['total_sessions'] }}</td>
+                                <td
+                                    class="text-center fw-bold {{ 'text-success' if percentage >= 75 else 'text-danger' }}">
+                                    {{ percentage }}%</td>
+                                <td class="pe-4" style="width: 30%;">
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar {{ 'bg-success' if percentage >= 75 else 'bg-danger' }}"
+                                            role="progressbar" style="width: {{ percentage }}%"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

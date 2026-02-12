@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance Sessions - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row fade-in">
+    <div class="col-12 mb-4 d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="fw-bold mb-0">Attendance Sessions</h1>
+            <p class="text-muted">Manage and track course attendance.</p>
+        </div>
+        {% if user['role'] in ['admin', 'instructor'] %}
+        <a href="{{ url_for('create_attendance_session') }}" class="btn btn-success shadow-sm">
+            <i class="fas fa-plus me-2"></i>Create New Session
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-0">
+                {% if sessions %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4 py-3">Course</th>
+                                <th class="py-3">Date & Time</th>
+                                <th class="py-3">Status</th>
+                                <th class="py-3">Action</th>
+                                {% if user['role'] in ['admin', 'instructor'] %}
+                                <th class="pe-4 py-3 text-end">Report</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in sessions %}
+                            <tr>
+                                <td class="ps-4 fw-bold">{{ session['course_code'] }}</td>
+                                <td>
+                                    <i class="far fa-calendar me-2 text-muted"></i>{{ session['session_date'] }}
+                                    <i class="far fa-clock ms-2 me-1 text-muted"></i>{{ session['session_time'] }}
+                                </td>
+                                <td>
+                                    <span
+                                        class="badge bg-{{ 'success' if session['status'] == 'active' else 'secondary' }} rounded-pill">
+                                        {{ session['status']|upper }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('attendance_session', session_id=session['id']) }}"
+                                        class="btn btn-sm btn-outline-primary rounded-pill">
+                                        View / Check-in
+                                    </a>
+                                </td>
+                                {% if user['role'] in ['admin', 'instructor'] %}
+                                <td class="pe-4 text-end">
+                                    <a href="{{ url_for('attendance_report', course_code=session['course_code']) }}"
+                                        class="btn btn-sm btn-light">
+                                        <i class="fas fa-chart-bar me-1"></i> Report
+                                    </a>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-clipboard-list fa-3x text-muted mb-3 opacity-50"></i>
+                    <p class="text-muted">No attendance sessions found.</p>
+                    {% if user['role'] in ['admin', 'instructor'] %}
+                    <a href="{{ url_for('create_attendance_session') }}" class="btn btn-primary">Create Your First
+                        Session</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

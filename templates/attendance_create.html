@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Create Attendance Session - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center fade-in">
+    <div class="col-lg-6">
+        <div class="card shadow border-0">
+            <div class="card-header bg-white border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-light rounded-circle me-3"><i
+                            class="fas fa-arrow-left"></i></a>
+                    <h3 class="mb-0 fw-bold">New Attendance Session</h3>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Course Code / Name</label>
+                        <input type="text" name="course_code" class="form-control form-control-lg"
+                            placeholder="e.g. CS101 - Intro to Programming" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label fw-bold">Date</label>
+                            <input type="date" name="session_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label fw-bold">Time</label>
+                            <input type="time" name="session_time" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="duration" class="form-label fw-bold">Duration (minutes)</label>
+                        <input type="number" class="form-control" id="duration" name="duration" value="60" min="5"
+                            max="240" required>
+                        <div class="form-text">Students must check in within this time window.</div>
+                    </div>
+
+                    <div class="alert alert-info border-0 shadow-sm">
+                        <i class="fas fa-info-circle me-2"></i> This session will be recorded on the blockchain. Once
+                        created, students can check-in.
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-success btn-lg">Create Session</button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-light">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

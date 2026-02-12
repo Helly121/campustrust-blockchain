@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Feedback Forms - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center fade-in">
+    <div class="col-lg-10">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="display-5 fw-bold text-info mb-0">Feedback & Surveys</h1>
+                <p class="lead text-muted">Share your thoughts and help improve campus life.</p>
+            </div>
+            {% if user['role'] == 'admin' %}
+            <a href="{{ url_for('create_feedback') }}" class="btn btn-success rounded-pill px-4">
+                <i class="fas fa-plus me-2"></i>Create New Form
+            </a>
+            {% endif %}
+        </div>
+
+        {% if forms %}
+        <div class="row g-4">
+            {% for form in forms %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm hover-card">
+                    <div class="card-body p-4 d-flex flex-column">
+                        <div class="mb-3">
+                            <div class="bg-info bg-opacity-10 d-inline-block p-3 rounded-circle text-info">
+                                <i class="fas fa-comment-alt fa-2x"></i>
+                            </div>
+                        </div>
+                        <h4 class="fw-bold mb-2">{{ form['title'] }}</h4>
+                        <p class="text-muted small mb-4 flex-grow-1">{{ form['description']|truncate(100) }}</p>
+
+                        <div class="mt-auto">
+                            {% if form['id'] in responded_forms %}
+                            <button class="btn btn-outline-success w-100" disabled>
+                                <i class="fas fa-check-circle me-2"></i>Completed
+                            </button>
+                            {% else %}
+                            <a href="{{ url_for('feedback_form', form_id=form['id']) }}"
+                                class="btn btn-info text-white w-100">
+                                Start Survey
+                            </a>
+                            {% endif %}
+
+                            {% if user['role'] == 'admin' %}
+                            <a href="{{ url_for('feedback_results', form_id=form['id']) }}"
+                                class="btn btn-link text-muted btn-sm w-100 mt-2 text-decoration-none">
+                                View Results
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-0 text-muted small py-3">
+                        <i class="far fa-clock me-1"></i> Posted: {{ form['created_date'][:10] }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <div class="bg-light d-inline-block p-4 rounded-circle mb-3">
+                <i class="fas fa-inbox fa-4x text-muted opacity-50"></i>
+            </div>
+            <h3 class="fw-bold text-muted">No Active Surveys</h3>
+            <p class="text-muted">There are currently no active feedback forms asking for your input.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

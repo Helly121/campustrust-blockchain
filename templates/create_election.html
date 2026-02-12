@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Create Election - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center fade-in">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-light rounded-circle me-3"><i
+                            class="fas fa-arrow-left"></i></a>
+                    <h3 class="mb-0 fw-bold">Create New Election</h3>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Election Title</label>
+                        <input type="text" name="title" class="form-control form-control-lg"
+                            placeholder="e.g. Student Council President 2024" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea name="description" class="form-control" rows="3"
+                            placeholder="Brief description of the election..."></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Candidates <span class="text-muted fw-normal">(One name per
+                                line)</span></label>
+                        <div class="bg-light p-3 rounded mb-2">
+                            <textarea name="candidates" class="form-control border-0 bg-transparent" rows="6"
+                                placeholder="Alice Smith&#10;Bob Jones&#10;Charlie Brown" required></textarea>
+                        </div>
+                        <div class="form-text"><i class="fas fa-info-circle me-1"></i> Each line will be registered as a
+                            separate candidate.</div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-5">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-light px-4">Cancel</a>
+                        <button type="submit" class="btn btn-success px-4">Create Election</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

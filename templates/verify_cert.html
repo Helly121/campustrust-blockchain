@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Verify Certificate - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center fade-in">
+    <div class="col-lg-7">
+        <div class="text-center mb-5">
+            <h1 class="fw-bold">Certificate Verification</h1>
+            <p class="lead text-muted">Instantly verify the authenticity of any document issued by CampusTrust.</p>
+        </div>
+
+        <div class="card shadow-lg border-0 mb-5">
+            <div class="card-body p-5">
+                <form method="post" enctype="multipart/form-data" class="text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-search-dollar fa-3x text-secondary mb-3"></i>
+                        <h5>Upload Document to Verify</h5>
+                        <p class="text-muted small">We calculate the hash locally and check it against the blockchain
+                            registry.</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <input type="file" name="certificate" class="form-control form-control-lg" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        Verify Authenticity
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {% if result %}
+        <div class="card border-0 shadow-sm fade-in mt-4">
+            <div class="card-body p-4">
+                {% if result.valid %}
+                <div class="text-center mb-4">
+                    <div class="text-success mb-3">
+                        <i class="fas fa-check-circle fa-4x"></i>
+                    </div>
+                    <h3 class="fw-bold text-success">Valid Certificate</h3>
+                    <p class="text-muted">This document is authentic and recorded on the Algorand blockchain.</p>
+                </div>
+
+                <div class="bg-light p-4 rounded">
+                    <div class="row g-3">
+                        <div class="col-md-6 border-bottom pb-2">
+                            <label class="small text-muted fw-bold text-uppercase">Issued To</label>
+                            <div class="fw-bold fs-5">{{ result.student_name }}</div>
+                        </div>
+                        <div class="col-md-6 border-bottom pb-2">
+                            <label class="small text-muted fw-bold text-uppercase">Student ID</label>
+                            <div class="fs-5">{{ result.student_id }}</div>
+                        </div>
+                        <div class="col-md-12 border-bottom pb-2">
+                            <label class="small text-muted fw-bold text-uppercase">Filename</label>
+                            <div>{{ result.filename }}</div>
+                        </div>
+                        <div class="col-md-12 border-bottom pb-2">
+                            <label class="small text-muted fw-bold text-uppercase">Document Hash</label>
+                            <code class="d-block text-break">{{ result.hash }}</code>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="small text-muted fw-bold text-uppercase">Blockchain Transaction ID</label>
+                            <div>
+                                <a href="https://lora.algokit.io/testnet/transaction/{{ result.tx_id }}" target="_blank"
+                                    class="text-break text-decoration-none">
+                                    {{ result.tx_id }} <i class="fas fa-external-link-alt small ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center">
+                    <div class="text-danger mb-3">
+                        <i class="fas fa-times-circle fa-4x"></i>
+                    </div>
+                    <h3 class="fw-bold text-danger">Invalid Document</h3>
+                    <p class="text-muted">No record found for this document hash on the blockchain.</p>
+                    <div class="mt-3 bg-light p-3 rounded">
+                        <label class="small text-muted fw-bold text-uppercase d-block mb-1">Calculated Hash</label>
+                        <code class="d-block text-break">{{ result.hash }}</code>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

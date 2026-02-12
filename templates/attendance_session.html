@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Session Detail - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center fade-in">
+    <div class="col-lg-10">
+        <!-- Header -->
+        <div class="card shadow-sm border-0 mb-4 bg-primary text-white">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-uppercase opacity-75 fw-bold mb-1">Attendance Session</h6>
+                        <h2 class="fw-bold mb-2">{{ session_info['course_code'] }}</h2>
+                        <div class="d-flex align-items-center gap-3">
+                            <span><i class="far fa-calendar me-2"></i>{{ session_info['session_date'] }}</span>
+                            <span><i class="far fa-clock me-2"></i>{{ session_info['session_time'] }}</span>
+                            {% if session_info['end_time'] %}
+                            <span class="badge bg-warning text-dark"><i class="fas fa-hourglass-end me-1"></i>Due: {{
+                                session_info['end_time'][11:16] }}</span>
+                            {% endif %}
+                            <span class="badge bg-white text-primary rounded-pill">{{ session_info['status']|upper
+                                }}</span>
+                        </div>
+                    </div>
+                    {% if not is_instructor and not existing_record %}
+                    {% if session_info['end_time'] and session_info['end_time'] < now %} <div
+                        class="alert alert-warning">
+                        <i class="fas fa-clock me-2"></i> Check-in time has expired.
+                </div>
+                <button class="btn btn-secondary w-100 btn-lg" disabled>
+                    <i class="fas fa-ban me-2"></i> Session Expired
+                </button>
+                {% else %}
+                <form method="post">
+                    <button type="submit" class="btn btn-light btn-lg fw-bold text-primary shadow">
+                        <i class="fas fa-check-circle me-2"></i>Check In Now
+                    </button>
+                </form>
+                {% endif %}
+                {% elif existing_record %}
+                <div class="bg-white text-success px-4 py-2 rounded shadow-sm">
+                    <i class="fas fa-check-double me-2"></i>Checked In
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if is_instructor %}
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold">Student List</h5>
+                <div class="input-group w-auto">
+                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-search"></i></span>
+                    <input type="text" class="form-control border-start-0" placeholder="Search student..."
+                        id="studentSearch">
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-4">Student Name</th>
+                            <th>ID</th>
+                            <th>Status</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody">
+                        {% for student in students %}
+                        {% set record = attendance_dict.get(student['id']) %}
+                        <tr>
+                            <td class="ps-4 fw-medium">{{ student['name'] }}</td>
+                            <td class="text-muted small">{{ student['student_id'] }}</td>
+                            <td>
+                                {% if record %}
+                                {% if record['status'] == 'present' %}
+                                <span class="badge bg-success rounded-pill">Present</span>
+                                <small class="text-muted d-block mt-1" style="font-size: 0.7rem">
+                                    {{ record['marked_at'].split('T')[1][:5] }}
+                                </small>
+                                {% else %}
+                                <span class="badge bg-danger rounded-pill">Absent</span>
+                                {% endif %}
+                                {% else %}
+                                <span class="badge bg-secondary rounded-pill">Not Marked</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group btn-group-sm">
+                                    <button
+                                        onclick="markAttendance({{ session_info['id'] }}, {{ student['id'] }}, 'present')"
+                                        class="btn btn-outline-success {% if record and record['status'] == 'present' %}active{% endif %}">
+                                        Present
+                                    </button>
+                                    <button
+                                        onclick="markAttendance({{ session_info['id'] }}, {{ student['id'] }}, 'absent')"
+                                        class="btn btn-outline-danger {% if record and record['status'] == 'absent' %}active{% endif %}">
+                                        Absent
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Student View of verification -->
+    {% if existing_record %}
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <h5>Assuming Record Verified</h5>
+            <div class="bg-light p-3 rounded">
+                <div class="row">
+                    <div class="col-md-3 text-muted">Marked At:</div>
+                    <div class="col-md-9 fw-bold">{{ existing_record['marked_at'].replace('T', ' ')[:19] }}</div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-3 text-muted">Transaction ID:</div>
+                    <div class="col-md-9 text-break">
+                        <a href="https://lora.algokit.io/testnet/transaction/{{ existing_record['tx_id'] }}"
+                            target="_blank">
+                            {{ existing_record['tx_id'] }} <i class="fas fa-external-link-alt small"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+</div>
+
+{% block extra_js %}
+<script>
+    function markAttendance(sessionId, userId, status) {
+        console.log(`Marking attendance: Session ${sessionId}, User ${userId}, Status ${status}`);
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+        btn.disabled = true;
+
+        fetch(`/attendance/${sessionId}/${userId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ status: status })
+        })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.error || 'Server error'); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error marking attendance: ' + (data.error || 'Unknown error'));
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to mark attendance: ' + error.message);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+    }
+
+    // Simple search filter
+    document.getElementById('studentSearch')?.addEventListener('keyup', function () {
+        let filter = this.value.toLowerCase();
+        let rows = document.getElementById('studentTableBody').getElementsByTagName('tr');
+        for (let i = 0; i < rows.length; i++) {
+            let nameCol = rows[i].getElementsByTagName('td')[0];
+            if (nameCol) {
+                let txtValue = nameCol.textContent || nameCol.innerText;
+                if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                    rows[i].style.display = "";
+                } else {
+                    rows[i].style.display = "none";
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}

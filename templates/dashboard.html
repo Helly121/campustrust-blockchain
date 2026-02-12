@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row mb-5 fade-in">
+    <div class="col-md-8">
+        <h1 class="display-5 fw-bold text-primary mb-0">Welcome, {{ user['name'] }}</h1>
+        <p class="lead text-muted">{{ user['role']|title }} Dashboard</p>
+    </div>
+    <div class="col-md-4 text-md-end d-flex align-items-center justify-content-md-end">
+        <span class="badge bg-light text-dark border p-2 rounded-pill px-3">
+            <i class="fas fa-id-badge me-2 text-primary"></i>ID: {{ user['student_id'] }}
+        </span>
+    </div>
+</div>
+
+<!-- Navigation Tabs -->
+<ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item">
+        <a class="nav-link active" id="overview-tab" data-bs-toggle="tab" href="#overview" role="tab">
+            <i class="fas fa-home me-2"></i>Overview
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="attendance-tab" data-bs-toggle="tab" href="#attendance" role="tab">
+            <i class="fas fa-calendar-check me-2"></i>Attendance
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="feedback-tab" data-bs-toggle="tab" href="#feedback" role="tab">
+            <i class="fas fa-comment-alt me-2"></i>Feedback
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="groups-tab" data-bs-toggle="tab" href="#groups" role="tab">
+            <i class="fas fa-users me-2"></i>Groups
+        </a>
+    </li>
+    {% if user['role'] == 'admin' %}
+    <li class="nav-item">
+        <a class="nav-link" id="admin-tab" data-bs-toggle="tab" href="#admin" role="tab">
+            <i class="fas fa-cog me-2"></i>Admin
+        </a>
+    </li>
+    {% endif %}
+    <li class="nav-item">
+        <a class="nav-link" id="wallet-tab" href="{{ url_for('wallet_features') }}">
+            <i class="fas fa-wallet me-2"></i>Wallet
+        </a>
+    </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content">
+    <!-- Overview Tab -->
+    <div class="tab-pane fade show active" id="overview" role="tabpanel">
+        <div class="row g-4">
+            <!-- Stats / Quick Actions -->
+            <div class="col-md-12">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white h-100">
+                            <div class="card-body">
+                                <h6 class="text-uppercase opacity-75 small fw-bold">Certificates</h6>
+                                <h2 class="display-6 fw-bold mb-0">{{ certs|length }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Certificates Section -->
+            <div class="col-lg-8">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center bg-white">
+                        <h5 class="mb-0"><i class="fas fa-certificate me-2 text-warning"></i>My Certificates</h5>
+                        <a href="{{ url_for('upload_certificate') }}" class="btn btn-sm btn-primary rounded-pill px-3">
+                            <i class="fas fa-plus me-1"></i> Upload
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        {% if certs %}
+                        <div class="list-group list-group-flush">
+                            {% for cert in certs %}
+                            <div class="list-group-item border-0 px-0 py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0 me-3">
+                                        <div class="bg-light rounded p-2">
+                                            <i class="fas fa-file-alt fa-2x text-primary"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1 fw-bold">{{ cert['filename'] }}</h6>
+                                        <p class="mb-1 small text-muted">Uploaded: {{ cert['upload_date'][:10] }}</p>
+                                        <a href="https://lora.algokit.io/testnet/transaction/{{ cert['tx_id'] }}"
+                                            target="_blank" class="small text-decoration-none">
+                                            <i class="fas fa-external-link-alt me-1"></i>Verify on Blockchain
+                                        </a>
+                                    </div>
+                                    <div class="ms-3">
+                                        <button class="btn btn-sm btn-outline-secondary" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#qr-{{ loop.index }}">
+                                            <i class="fas fa-qrcode"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="collapse mt-3" id="qr-{{ loop.index }}">
+                                    <div class="card card-body bg-light border-0 text-center">
+                                        <div id="qrcode-{{ loop.index }}" class="d-inline-block bg-white p-2 rounded">
+                                        </div>
+                                        <script>
+                                            new QRCode(document.getElementById("qrcode-{{ loop.index }}"), {
+                                                text: "https://lora.algokit.io/testnet/transaction/{{ cert['tx_id'] }}",
+                                                width: 128,
+                                                height: 128
+                                            });
+                                        </script>
+                                        <small class="d-block mt-2 text-muted">Scan to verify</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-file-upload fa-3x text-muted mb-3 opacity-50"></i>
+                            <p class="text-muted">No certificates uploaded yet.</p>
+                            <a href="{{ url_for('upload_certificate') }}" class="btn btn-outline-primary btn-sm">Upload
+                                First Certificate</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Elections Section -->
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center bg-white">
+                        <h5 class="mb-0"><i class="fas fa-vote-yea me-2 text-success"></i>Elections</h5>
+                        {% if user['role'] == 'admin' %}
+                        <a href="{{ url_for('create_election') }}" class="btn btn-sm btn-success rounded-pill px-3">
+                            <i class="fas fa-plus"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        {% if elections %}
+                        <div class="list-group list-group-flush">
+                            {% for election in elections %}
+                            <a href="{{ url_for('election_detail', eid=election['id']) }}"
+                                class="list-group-item list-group-item-action border-0 px-0 py-3">
+                                <div class="d-flex w-100 justify-content-between align-items-center">
+                                    <h6 class="mb-1 fw-bold">{{ election['title'] }}</h6>
+                                    <span
+                                        class="badge bg-{{ 'success' if election['status']=='active' else 'secondary' }} rounded-pill">{{
+                                        election['status'] }}</span>
+                                </div>
+                                <small class="text-muted">{{ election['description']|truncate(50) }}</small>
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <p class="text-muted small">No active elections.</p>
+                        </div>
+                        {% endif %}
+                        <div class="mt-3 pt-3 border-top text-center">
+                            <a href="{{ url_for('verify') }}" class="btn btn-outline-secondary btn-sm w-100">
+                                <i class="fas fa-search me-1"></i> Public Certificate Verification
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Tab -->
+    <div class="tab-pane fade" id="attendance" role="tabpanel">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card text-center p-5">
+                    <div class="mb-4">
+                        <div class="bg-primary bg-opacity-10 d-inline-block p-4 rounded-circle">
+                            <i class="fas fa-calendar-check fa-4x text-primary"></i>
+                        </div>
+                    </div>
+                    <h3>Attendance Tracking</h3>
+                    <p class="text-muted mb-4 col-lg-8 mx-auto">Track your attendance across all courses with immutable
+                        Algorand verification. Ensure your academic record is tamper-proof.</p>
+                    <div class="d-flex justify-content-center gap-2">
+                        <a href="{{ url_for('attendance_list') }}" class="btn btn-primary px-4">View All Sessions</a>
+                        {% if user['role'] in ['admin', 'instructor'] %}
+                        <a href="{{ url_for('create_attendance_session') }}" class="btn btn-outline-success px-4">Create
+                            Session</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback Tab -->
+    <div class="tab-pane fade" id="feedback" role="tabpanel">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card text-center p-5">
+                    <div class="mb-4">
+                        <div class="bg-info bg-opacity-10 d-inline-block p-4 rounded-circle">
+                            <i class="fas fa-comments fa-4x text-info"></i>
+                        </div>
+                    </div>
+                    <h3>Feedback & Surveys</h3>
+                    <p class="text-muted mb-4 col-lg-8 mx-auto">Submit feedback anonymously or with verification on the
+                        blockchain. Your voice matters and is permanently recorded.</p>
+                    <div class="d-flex justify-content-center gap-2">
+                        {# Assuming there might be a list page for feedback, linking to dashboard for now or specific
+                        action could be better #}
+                        <a href="{{ url_for('feedback_list') }}" class="btn btn-primary px-4">View Forms</a>
+                        {% if user['role'] == 'admin' %}
+                        <a href="{{ url_for('create_feedback') }}" class="btn btn-outline-success px-4">Create Feedback
+                            Form</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Groups Tab -->
+    <div class="tab-pane fade" id="groups" role="tabpanel">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                {% if invites %}
+                <div class="card mb-4 border-warning">
+                    <div class="card-header bg-warning bg-opacity-10 text-warning fw-bold">
+                        <i class="fas fa-envelope-open-text me-2"></i>Pending Invitations
+                    </div>
+                    <div class="list-group list-group-flush">
+                        {% for group in invites %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                            <div>
+                                <h6 class="mb-1 fw-bold">{{ group['name'] }}</h6>
+                                <p class="mb-0 small text-muted">You have been invited to join this group.</p>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <form action="{{ url_for('accept_invite', group_id=group['id']) }}" method="post">
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="fas fa-check me-1"></i>Accept
+                                    </button>
+                                </form>
+                                <form action="{{ url_for('decline_invite', group_id=group['id']) }}" method="post">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-times me-1"></i>Decline
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="card text-center p-5">
+                    <div class="mb-4">
+                        <div class="bg-warning bg-opacity-10 d-inline-block p-4 rounded-circle">
+                            <i class="fas fa-users fa-4x text-warning"></i>
+                        </div>
+                    </div>
+                    <h3>Group Coordination</h3>
+                    <p class="text-muted mb-4 col-lg-8 mx-auto">Collaborate with peers on projects, manage tasks, and
+                        track milestones on the blockchain. Verifiable proof of contribution.</p>
+                    <div class="d-flex justify-content-center gap-2">
+                        <a href="{{ url_for('create_group') }}" class="btn btn-success px-4">Create Group</a>
+                        <a href="{{ url_for('discover_groups') }}" class="btn btn-primary px-4">Browse Groups</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Tab -->
+    {% if user['role'] == 'admin' %}
+    <div class="tab-pane fade" id="admin" role="tabpanel">
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 text-center hover-card">
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <i class="fas fa-vote-yea fa-3x text-primary"></i>
+                        </div>
+                        <h5 class="fw-bold">Elections</h5>
+                        <p class="text-muted small">Manage secure campus elections.</p>
+                        <a href="{{ url_for('create_election') }}"
+                            class="btn btn-sm btn-outline-primary stretched-link">Manage</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 text-center hover-card">
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <i class="fas fa-calendar-check fa-3x text-success"></i>
+                        </div>
+                        <h5 class="fw-bold">Attendance</h5>
+                        <p class="text-muted small">Monitor sessions and records.</p>
+                        <a href="{{ url_for('create_attendance_session') }}"
+                            class="btn btn-sm btn-outline-success stretched-link">Manage</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 text-center hover-card">
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <i class="fas fa-comment-dots fa-3x text-info"></i>
+                        </div>
+                        <h5 class="fw-bold">Feedback</h5>
+                        <p class="text-muted small">Create and view surveys.</p>
+                        <a href="{{ url_for('create_feedback') }}"
+                            class="btn btn-sm btn-outline-info stretched-link">Manage</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 text-center hover-card">
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <i class="fas fa-users-cog fa-3x text-warning"></i>
+                        </div>
+                        <h5 class="fw-bold">Groups</h5>
+                        <p class="text-muted small">Oversee project groups.</p>
+                        <a href="{{ url_for('admin_create_group') }}"
+                            class="btn btn-sm btn-outline-warning stretched-link">Manage</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 text-center hover-card">
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <i class="fas fa-list-ul fa-3x text-secondary"></i>
+                        </div>
+                        <h5 class="fw-bold">Logs</h5>
+                        <p class="text-muted small">View system transactions.</p>
+                        <a href="{{ url_for('admin_transactions') }}"
+                            class="btn btn-sm btn-outline-secondary stretched-link">View</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

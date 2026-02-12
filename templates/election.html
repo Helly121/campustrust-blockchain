@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}{{ election['title'] }} - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center fade-in">
+    <div class="col-lg-10">
+        <!-- Header -->
+        <div class="d-flex align-items-start justify-content-between mb-4">
+            <div>
+                <a href="{{ url_for('dashboard') }}"
+                    class="text-decoration-none text-muted small mb-2 d-inline-block"><i
+                        class="fas fa-arrow-left me-1"></i> Back to Dashboard</a>
+                <h1 class="fw-bold mb-1">{{ election['title'] }}</h1>
+                <p class="text-muted lead mb-0">{{ election['description'] }}</p>
+                <div class="mt-2">
+                    <span
+                        class="badge bg-{{ 'success' if election['status']=='active' else 'secondary' }} rounded-pill px-3">{{
+                        election['status']|upper }}</span>
+                    <span class="text-muted small ms-2"><i class="far fa-calendar-alt me-1"></i> Created: {{
+                        election['created_date'][:10] }}</span>
+                </div>
+            </div>
+            {% if user['role'] == 'admin' %}
+            {% if election['status'] == 'active' %}
+            <a href="{{ url_for('end_election', eid=election['id']) }}" class="btn btn-danger btn-sm"
+                onclick="return confirm('Are you sure you want to end this election?');">
+                <i class="fas fa-stop-circle me-1"></i> End Election
+            </a>
+            {% elif election['status'] == 'ended' %}
+            <a href="{{ url_for('delete_election', eid=election['id']) }}" class="btn btn-outline-danger btn-sm"
+                onclick="return confirm('Are you sure you want to DELETE this election? This action cannot be undone.');">
+                <i class="fas fa-trash-alt me-1"></i> Delete Election
+            </a>
+            {% endif %}
+            {% endif %}
+        </div>
+
+        <div class="row g-4">
+            <!-- Voting Section -->
+            <div class="col-lg-7">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-header bg-white">
+                        <h4 class="mb-0">Candidates</h4>
+                    </div>
+                    <div class="card-body">
+                        {% if has_voted %}
+                        <div class="alert alert-success border-0 shadow-sm">
+                            <i class="fas fa-check-circle me-2"></i> You have already voted in this election.
+                        </div>
+                        {% endif %}
+
+                        {% if election['status'] == 'active' and not has_voted %}
+                        <form method="post">
+                            <div class="list-group list-group-flush mb-4">
+                                {% for candidate in candidates %}
+                                <label class="list-group-item list-group-item-action p-3 rounded mb-2 border">
+                                    <div class="d-flex align-items-center">
+                                        <input class="form-check-input me-3" type="radio" name="candidate"
+                                            value="{{ candidate['id'] }}" required style="transform: scale(1.2);">
+                                        <div>
+                                            <span class="fw-bold fs-5">{{ candidate['name'] }}</span>
+                                        </div>
+                                    </div>
+                                </label>
+                                {% endfor %}
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <i class="fas fa-vote-yea me-2"></i>Cast Vote (Recorded on Blockchain)
+                            </button>
+                        </form>
+                        {% else %}
+                        <!-- List candidates without radio buttons if not voting -->
+                        <ul class="list-group list-group-flush">
+                            {% for candidate in candidates %}
+                            <li class="list-group-item px-0 py-3 border-bottom">
+                                <i class="fas fa-user-tie me-3 text-secondary"></i>
+                                <span class="fw-medium">{{ candidate['name'] }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="col-lg-5">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-header bg-white">
+                        <h4 class="mb-0">Live Results</h4>
+                    </div>
+                    <div class="card-body">
+                        {% if results %}
+                        {% for row in results %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-bold">{{ row['name'] }}</span>
+                                <span class="badge bg-light text-dark">{{ row['votes'] }} votes</span>
+                            </div>
+                            <div class="progress" style="height: 10px;">
+                                <!-- Calculate percentage logic needed usually, simplistic here -->
+                                <div class="progress-bar bg-primary" role="progressbar"
+                                    style="width: {{ (row['votes'] / (results|sum(attribute='votes') if results|sum(attribute='votes') > 0 else 1) * 100)|int }}%">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        <hr>
+                        <div class="text-center text-muted small">
+                            Total Votes: {{ results|sum(attribute='votes') }}
+                        </div>
+                        {% else %}
+                        <p class="text-muted text-center py-4">No votes yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vote Ledger Section -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">Vote Ledger (Blockchain Verified)</h4>
+                        <span class="badge bg-info text-dark">TestNet</span>
+                    </div>
+                    <div class="card-body">
+                        {% if vote_records %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Details</th>
+                                        <th>Transaction ID</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for vote in vote_records %}
+                                    <tr>
+                                        <td>{{ vote['vote_date'][:19].replace('T', ' ') }}</td>
+                                        <td>Vote cast</td>
+                                        <td>
+                                            <span class="text-monospace small">{{ vote['tx_id'][:8] }}...{{
+                                                vote['tx_id'][-8:] }}</span>
+                                        </td>
+                                        <td>
+                                            <a href="https://lora.algokit.io/testnet/transaction/{{ vote['tx_id'] }}"
+                                                target="_blank" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-external-link-alt me-1"></i> Verify
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted text-center py-4">No votes recorded on blockchain yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

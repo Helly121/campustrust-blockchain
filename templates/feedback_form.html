@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}{{ form['title'] }} - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center fade-in">
+    <div class="col-lg-8">
+        <div class="text-center mb-5">
+            <h1 class="fw-bold mb-2">{{ form['title'] }}</h1>
+            <p class="lead text-muted">{{ form['description'] }}</p>
+        </div>
+
+        {% if response %}
+        <div class="card border-0 shadow-sm text-center p-5">
+            <div class="mb-3 text-success">
+                <i class="fas fa-check-circle fa-4x"></i>
+            </div>
+            <h3 class="fw-bold">Thank You!</h3>
+            <p class="text-muted">Your response has been recorded.</p>
+            {% if response['tx_id'] %}
+            <div class="alert alert-light border d-inline-block mt-2">
+                <small class="text-muted d-block mb-1">Secured on Algorand Blockchain</small>
+                <code class="text-primary">{{ response['tx_id'] }}</code>
+                <a href="https://lora.algokit.io/testnet/transaction/{{ response['tx_id'] }}" target="_blank"
+                    class="ms-2 text-decoration-none">
+                    <i class="fas fa-external-link-alt"></i>
+                </a>
+            </div>
+            {% endif %}
+            <div class="mt-4">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+                {% if user['role'] == 'admin' %}
+                <a href="{{ url_for('feedback_results', form_id=form_id) }}" class="btn btn-outline-secondary ms-2">View
+                    Results</a>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="card shadow-lg border-0">
+            <div class="card-body p-5">
+                <form method="post">
+                    {% if form['allow_anonymous'] %}
+                    <div class="alert alert-secondary border-0 d-flex align-items-center mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="is_anonymous" id="anonCheck">
+                            <label class="form-check-label fw-bold" for="anonCheck">Submit Anonymously</label>
+                        </div>
+                        <i class="fas fa-info-circle ms-auto text-muted" data-bs-toggle="tooltip"
+                            title="Anonymous responses are not linked to your ID on the blockchain"></i>
+                    </div>
+                    {% endif %}
+
+                    {% for q in questions %}
+                    <div class="mb-4 pb-3 border-bottom last-border-0">
+                        <label class="form-label fw-bold fs-5 mb-3">
+                            {{ loop.index }}. {{ q['question_text'] }}
+                            {% if q['required'] %}<span class="text-danger">*</span>{% endif %}
+                        </label>
+
+                        {% if q['question_type'] == 'text' %}
+                        <textarea name="question_{{ q['id'] }}" class="form-control bg-light border-0" rows="3" {% if
+                            q['required'] %}required{% endif %}></textarea>
+                        {% elif q['question_type'] == 'rating' %}
+                        <div class="d-flex justify-content-between px-2">
+                            {% for i in range(1, 6) %}
+                            <div class="form-check form-check-inline text-center">
+                                <input class="form-check-input" type="radio" name="question_{{ q['id'] }}"
+                                    id="q{{ q['id'] }}_{{ i }}" value="{{ i }}" {% if q['required'] %}required{% endif
+                                    %}>
+                                <label class="form-check-label d-block mt-1 fw-bold" for="q{{ q['id'] }}_{{ i }}">{{ i
+                                    }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="d-flex justify-content-between px-3 mt-1 small text-muted">
+                            <span>Poor</span>
+                            <span>Excellent</span>
+                        </div>
+                        {% elif q['question_type'] == 'yesno' %}
+                        <div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="question_{{ q['id'] }}"
+                                    id="q{{ q['id'] }}_yes" value="Yes" {% if q['required'] %}required{% endif %}>
+                                <label class="form-check-label" for="q{{ q['id'] }}_yes">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="question_{{ q['id'] }}"
+                                    id="q{{ q['id'] }}_no" value="No" {% if q['required'] %}required{% endif %}>
+                                <label class="form-check-label" for="q{{ q['id'] }}_no">No</label>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+
+                    <div class="d-grid mt-5">
+                        <button type="submit" class="btn btn-primary btn-lg">Submit Feedback</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

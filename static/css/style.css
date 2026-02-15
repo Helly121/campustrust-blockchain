@@ -13,6 +13,15 @@
     --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --glass-bg: rgba(255, 255, 255, 0.95);
     --glass-border: 1px solid rgba(255, 255, 255, 0.2);
+    --input-focus-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+/* Utilities */
+.text-gradient {
+    background: linear-gradient(135deg, var(--primary-color), #a855f7);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 body {
@@ -25,7 +34,12 @@ body {
 }
 
 /* Typography */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     font-weight: 700;
     letter-spacing: -0.025em;
     color: var(--text-primary);
@@ -51,7 +65,8 @@ h1, h2, h3, h4, h5, h6 {
     transition: color 0.2s ease;
 }
 
-.nav-link:hover, .nav-link.active {
+.nav-link:hover,
+.nav-link.active {
     color: var(--primary-color) !important;
 }
 
@@ -109,6 +124,40 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Forms */
+.btn-pera {
+    background-color: #FFDE59;
+    color: #000000;
+    border: 2px solid #FFDE59;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px rgba(255, 222, 89, 0.2);
+    font-size: 1rem;
+    padding: 0.6rem 1.4rem;
+}
+
+.btn-pera:hover {
+    background-color: #ffe680;
+    border-color: #ffe680;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(255, 222, 89, 0.3);
+}
+
+.btn-pera-connected {
+    background-color: #1a1a1a;
+    color: #FFDE59;
+    border: 2px solid #FFDE59;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-pera-connected:hover {
+    background-color: #000000;
+    color: #fff;
+    border-color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
 .form-control {
     border-radius: 8px;
     padding: 0.75rem 1rem;
@@ -118,7 +167,91 @@ h1, h2, h3, h4, h5, h6 {
 
 .form-control:focus {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    border-color: var(--primary-color);
+    box-shadow: var(--input-focus-shadow);
+}
+
+.form-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.form-text {
+    font-size: 0.875rem;
+    color: var(--secondary-color);
+    margin-top: 0.25rem;
+}
+
+/* Custom File Input (if needed later, but good to have base) */
+.form-control[type="file"] {
+    padding: 0.5rem;
+}
+
+/* Bank & Data Tables */
+.table-responsive {
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+}
+
+.table thead th {
+    background-color: #f8fafc;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 1rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    color: var(--text-primary);
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+/* Hero Section for Pages */
+.hero-header {
+    background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
+    padding: 3rem 2rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* Loading State Overlay (Simple) */
+.btn.loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+}
+
+.btn.loading::after {
+    content: "";
+    position: absolute;
+    width: 1.25rem;
+    height: 1.25rem;
+    top: 50%;
+    left: 50%;
+    margin-top: -0.625rem;
+    margin-left: -0.625rem;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* Badges */
@@ -172,11 +305,23 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Custom Scrollbar */
+.custom-scroll {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
 ::-webkit-scrollbar {
     width: 8px;
 }

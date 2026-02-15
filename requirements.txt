@@ -1,2 +1,4 @@
-Flask==3.0.0
-py-algorand-sdk
+google-generativeai
+Flask
+algosdk
+msgpack

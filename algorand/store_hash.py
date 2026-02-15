@@ -44,6 +44,16 @@ def store_on_chain(note: str):
         return txid
     except Exception as e:
         print(f"Transaction failed (switching to MOCK MODE): {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # Log to file for visibility
+        try:
+             with open("transaction_logs.txt", "a") as f:
+                 f.write(f"TX ERROR: {str(e)}\n")
+        except:
+            pass
+            
         # Generate a mock transaction ID
         mock_txid = 'MOCK_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=52))
         print(f"Returning Mock TxID: {mock_txid}")

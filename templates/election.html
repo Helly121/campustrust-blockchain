@@ -50,7 +50,14 @@
                         </div>
                         {% endif %}
 
-                        {% if election['status'] == 'active' and not has_voted %}
+                        {% if user['role'] == 'admin' %}
+                        <div class="alert alert-info border-0 shadow-sm">
+                            <i class="fas fa-info-circle me-2"></i> Administrators are not eligible to vote in
+                            elections.
+                        </div>
+                        {% endif %}
+
+                        {% if election['status'] == 'active' and not has_voted and user['role'] != 'admin' %}
                         <form method="post">
                             <div class="list-group list-group-flush mb-4">
                                 {% for candidate in candidates %}
@@ -84,7 +91,8 @@
                 </div>
             </div>
 
-            <!-- Results Section -->
+            <!-- Results Section (Admins Only) -->
+            {% if user['role'] == 'admin' %}
             <div class="col-lg-5">
                 <div class="card h-100 shadow-sm border-0">
                     <div class="card-header bg-white">
@@ -116,6 +124,7 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
         </div>
 
         <!-- Vote Ledger Section -->

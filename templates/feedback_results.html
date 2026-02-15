@@ -52,7 +52,17 @@
         {% for q_id, data in results.items() %}
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header bg-white py-3">
-                <h5 class="mb-0 fw-bold">{{ loop.index }}. {{ data['question'] }}</h5>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold">{{ loop.index }}. {{ data['question'] }}</h5>
+                    {% if data['average'] is defined %}
+                    <div>
+                        <span class="badge bg-{{ data['sentiment_color'] }} me-2">
+                            {{ data['sentiment'] }}
+                        </span>
+                        <span class="fw-bold text-muted">Avg: {{ data['average'] }} / 5</span>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
             <div class="card-body">
                 {% if data['responses'] %}
@@ -61,6 +71,12 @@
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
                             <span>{{ resp['response_text'] }}</span>
+                            {% if resp['comments'] %}
+                            <div class="mt-2 p-2 bg-light rounded border-start border-primary border-4 small">
+                                <i class="fas fa-comment-dots text-muted me-1"></i>
+                                <em>{{ resp['comments'] }}</em>
+                            </div>
+                            {% endif %}
                             {% if resp['tx_id'] %}
                             <br>
                             <small class="text-muted" style="font-size: 0.75rem;">

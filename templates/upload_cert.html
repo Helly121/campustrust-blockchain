@@ -22,6 +22,21 @@
                         <div class="form-text">Supported formats: PDF, JPG, PNG</div>
                     </div>
 
+                    {% if session.get('role') == 'admin' or user.role == 'admin' %}
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Student ID (Owner)</label>
+                        <input type="text" name="student_id" class="form-control form-control-lg"
+                            placeholder="Enter Student ID associated with this certificate">
+                        <div class="form-text text-warning"><i class="fas fa-exclamation-triangle me-1"></i>Only this
+                            student will be able to claim/upload this file.</div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-4 form-check">
+                        <input type="checkbox" class="form-check-input" id="mint_nft" name="mint_nft">
+                        <label class="form-check-label" for="mint_nft">Mint as NFT (Permanent Verification)</label>
+                    </div>
+
                     <div class="d-grid gap-2">
                         <button type="submit" class="btn btn-primary btn-lg">
                             <i class="fas fa-lock me-2"></i>Upload & Verify

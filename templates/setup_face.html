@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Setup Face ID - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center fade-in">
+    <div class="col-lg-8">
+        <div class="card shadow-lg border-0">
+            <div class="card-header bg-primary text-white p-4">
+                <h3 class="mb-0 fw-bold"><i class="fas fa-user-lock me-2"></i>Setup Face Verification</h3>
+                <p class="mb-0 opacity-75">Register your face for secure attendance tracking.</p>
+            </div>
+            <div class="card-body p-5 text-center">
+
+                {% if user['face_descriptor'] %}
+                <div class="alert alert-success border-0 shadow-sm mb-4">
+                    <h4 class="alert-heading"><i class="fas fa-check-circle me-2"></i>Face ID Is Configured</h4>
+                    <p class="mb-0">You have already registered your face. You can re-register if needed.</p>
+                </div>
+                {% else %}
+                <div class="alert alert-warning border-0 shadow-sm mb-4">
+                    <i class="fas fa-exclamation-triangle me-2"></i> Face ID not configured. You cannot mark attendance
+                    without it.
+                </div>
+                {% endif %}
+
+                <div class="position-relative d-inline-block rounded overflow-hidden bg-dark shadow mb-3"
+                    style="width: 480px; height: 360px; max-width: 100%;">
+                    <video id="video" width="480" height="360" autoplay muted playsinline class="w-100 h-100"
+                        style="object-fit: cover;"></video>
+                    <canvas id="canvas" class="position-absolute top-0 start-0 w-100 h-100"></canvas>
+                    <div id="statusOverlay"
+                        class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-black bg-opacity-75"
+                        style="display: none !important;">
+                        <div class="text-white">
+                            <div class="spinner-border mb-3" role="status"></div>
+                            <h5>Processing...</h5>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="instructions" class="text-muted mb-4 small">
+                    Please ensure you are in a well-lit area and face the camera directly.<br>
+                    Only <strong>one face</strong> should be visible.
+                </div>
+
+                <button id="enrollBtn" class="btn btn-primary btn-lg px-5 shadow-sm" disabled onclick="enrollFace()">
+                    <i class="fas fa-camera me-2"></i>Capture & Register Face
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const enrollBtn = document.getElementById('enrollBtn');
+    let faceDescriptor = null;
+    let isModelLoaded = false;
+
+    // Load models
+    const MODEL_URL = '/static/models';
+    Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+    ]).then(startVideo).catch(err => {
+        console.error("Model Error:", err);
+        alert("Failed to load AI models. Please refresh.");
+    });
+
+    function startVideo() {
+        navigator.mediaDevices.getUserMedia({ video: {} })
+            .then(stream => {
+                video.srcObject = stream;
+                isModelLoaded = true;
+            })
+            .catch(err => console.error("Camera Error:", err));
+    }
+
+    video.addEventListener('play', () => {
+        const displaySize = { width: video.width, height: video.height };
+        faceapi.matchDimensions(canvas, displaySize);
+
+        setInterval(async () => {
+            if (!isModelLoaded || video.paused || video.ended) return;
+
+            const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                .withFaceLandmarks()
+                .withFaceDescriptors();
+
+            const resizedDetections = faceapi.resizeResults(detections, displaySize);
+            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+            faceapi.draw.drawDetections(canvas, resizedDetections);
+
+            if (detections.length === 1) {
+                enrollBtn.disabled = false;
+                enrollBtn.classList.remove('btn-secondary');
+                enrollBtn.classList.add('btn-primary');
+                faceDescriptor = detections[0].descriptor;
+            } else {
+                enrollBtn.disabled = true;
+                enrollBtn.classList.remove('btn-primary');
+                enrollBtn.classList.add('btn-secondary');
+                faceDescriptor = null;
+            }
+        }, 200);
+    });
+
+    async function enrollFace() {
+        if (!faceDescriptor) return;
+
+        const btn = document.getElementById('enrollBtn');
+        const status = document.getElementById('statusOverlay');
+
+        btn.disabled = true;
+        status.style.setProperty('display', 'flex', 'important');
+
+        try {
+            const response = await fetch('/setup_face', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ descriptor: Array.from(faceDescriptor) })
+            });
+
+            if (response.ok) {
+                alert('Face registered successfully!');
+                window.location.reload();
+            } else {
+                const data = await response.json();
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Submission Error:', error);
+            alert('Failed to register face.');
+        } finally {
+            status.style.display = 'none';
+            btn.disabled = false;
+        }
+    }
+</script>
+{% endblock %}

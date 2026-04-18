@@ -283,6 +283,25 @@ def create_tables():
         FOREIGN KEY(user_id) REFERENCES users(id)
     )''')
     
+    # Partner Management Tables
+    c.execute('''CREATE TABLE IF NOT EXISTS partners (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        website TEXT,
+        contact_email TEXT,
+        added_date TEXT
+    )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS badge_shares (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        badge_id INTEGER NOT NULL,
+        partner_id INTEGER NOT NULL,
+        shared_date TEXT,
+        FOREIGN KEY(badge_id) REFERENCES digital_badges(id),
+        FOREIGN KEY(partner_id) REFERENCES partners(id)
+    )''')
+    
     # Create default admin
     admin_hash = hashlib.sha256('admin'.encode()).hexdigest()
     c.execute("INSERT OR IGNORE INTO users (student_id, name, password_hash, role) VALUES ('admin', 'Administrator', ?, 'admin')", (admin_hash,))
@@ -2443,6 +2462,7 @@ def list_badges():
 
 @app.route('/badges/<int:badge_id>')
 def view_badge(badge_id):
+    user = get_current_user()
     conn = get_db_connection()
     badge = conn.execute('''
         SELECT b.*, u.name as recipient_name, u.student_id, i.name as issuer_name
@@ -2451,13 +2471,15 @@ def view_badge(badge_id):
         LEFT JOIN users i ON b.issuer_id = i.id
         WHERE b.id = ?
     ''', (badge_id,)).fetchone()
+    
+    partners = conn.execute('SELECT * FROM partners ORDER BY name').fetchall()
     conn.close()
     
     if not badge:
         flash('Badge not found.')
         return redirect(url_for('dashboard'))
         
-    return render_template('badge_detail.html', badge=badge)
+    return render_template('badge_detail.html', badge=badge, partners=partners, user=user)
 
 @app.route('/api/badges/issue', methods=['POST'])
 def api_issue_badge():
@@ -2518,6 +2540,100 @@ def api_issue_badge():
         
     result = issue_badge(recipient_id, user['id'], badge_name, description, image_url, group_id)
     return jsonify(result)
+
+@app.route('/view/partner/<int:partner_id>')
+def partner_inbox(partner_id):
+    conn = get_db_connection()
+    partner = conn.execute('SELECT * FROM partners WHERE id = ?', (partner_id,)).fetchone()
+    if not partner:
+        conn.close()
+        flash('Partner not found')
+        return redirect(url_for('login'))
+        
+    # Get all shared badges for this partner
+    shared_badges = conn.execute('''
+        SELECT b.*, bs.shared_date, u.name as recipient_name, u.student_id, i.name as issuer_name
+        FROM badge_shares bs
+        JOIN digital_badges b ON bs.badge_id = b.id
+        JOIN users u ON b.user_id = u.id
+        JOIN users i ON b.issuer_id = i.id
+        WHERE bs.partner_id = ?
+        ORDER BY bs.shared_date DESC
+    ''', (partner_id,)).fetchall()
+    conn.close()
+    
+    return render_template('partner_inbox.html', partner=partner, shared_badges=shared_badges)
+
+@app.route('/admin/partners', methods=['GET', 'POST'])
+def admin_partners():
+    user = get_current_user()
+    if not user or user['role'] != 'admin':
+        flash('Admin only')
+        return redirect(url_for('dashboard'))
+        
+    conn = get_db_connection()
+    if request.method == 'POST':
+        name = request.form.get('name')
+        p_type = request.form.get('type')
+        website = request.form.get('website')
+        email = request.form.get('email')
+        
+        if name and p_type:
+            conn.execute('INSERT INTO partners (name, type, website, contact_email, added_date) VALUES (?, ?, ?, ?, ?)',
+                        (name, p_type, website, email, datetime.datetime.now().isoformat()))
+            conn.commit()
+            flash(f'Partner {name} added successfully!')
+        else:
+            flash('Name and Type are required')
+            
+    partners = conn.execute('SELECT * FROM partners ORDER BY name').fetchall()
+    conn.close()
+    return render_template('admin_partners.html', partners=partners, user=user)
+
+@app.route('/admin/partners/delete/<int:partner_id>', methods=['POST'])
+def delete_partner(partner_id):
+    user = get_current_user()
+    if not user or user['role'] != 'admin':
+        return jsonify({"success": False, "error": "Unauthorized"}), 403
+        
+    conn = get_db_connection()
+    conn.execute('DELETE FROM partners WHERE id = ?', (partner_id,))
+    conn.commit()
+    conn.close()
+    flash('Partner removed')
+    return redirect(url_for('admin_partners'))
+
+@app.route('/api/badges/share', methods=['POST'])
+def api_share_badge():
+    user = get_current_user()
+    if not user:
+        return jsonify({"success": False, "error": "Not logged in"}), 401
+        
+    data = request.json
+    badge_id = data.get('badge_id')
+    partner_id = data.get('partner_id')
+    
+    if not badge_id or not partner_id:
+        return jsonify({"success": False, "error": "Missing badge_id or partner_id"}), 400
+        
+    conn = get_db_connection()
+    # Verify badge belongs to user
+    badge = conn.execute('SELECT id FROM digital_badges WHERE id = ? AND user_id = ?', (badge_id, user['id'])).fetchone()
+    if not badge:
+        conn.close()
+        return jsonify({"success": False, "error": "Badge not found or unauthorized"}), 403
+        
+    # Record share
+    try:
+        conn.execute('INSERT INTO badge_shares (badge_id, partner_id, shared_date) VALUES (?, ?, ?)',
+                    (badge_id, partner_id, datetime.datetime.now().isoformat()))
+        conn.commit()
+    except Exception as e:
+        conn.close()
+        return jsonify({"success": False, "error": str(e)}), 500
+        
+    conn.close()
+    return jsonify({"success": True})
 
 @app.route('/api/prepare_nft_minting', methods=['POST'])
 def prepare_nft_minting():

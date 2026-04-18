@@ -82,6 +82,31 @@
                             <i class="fas fa-share-alt me-2"></i> Share Link
                         </button>
                     </div>
+
+                    {% if partners and user and user.student_id == badge.student_id %}
+                    <div class="mt-5 pt-5 border-top">
+                        <div class="text-center mb-4">
+                            <h5 class="fw-bold mb-1">Share with Verified Partners</h5>
+                            <p class="text-muted small">Send your achievement proof directly to recruiters and universities.</p>
+                        </div>
+                        <div class="row justify-content-center">
+                            <div class="col-md-8">
+                                <div class="input-group">
+                                    <select class="form-select border-primary" id="partnerSelect">
+                                        <option value="" selected disabled>Select Partner Organization...</option>
+                                        {% for partner in partners %}
+                                        <option value="{{ partner.id }}">{{ partner.name }} ({{ partner.type }})</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button class="btn btn-primary px-4" type="button" onclick="shareWithPartner()">
+                                        <i class="fas fa-paper-plane me-2"></i>Send Proof
+                                    </button>
+                                </div>
+                                <div id="shareStatus" class="mt-2 text-center small fade-in d-none"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -113,6 +138,45 @@
         } else {
             navigator.clipboard.writeText(window.location.href);
             alert("Sharable link copied to clipboard!");
+        }
+    }
+
+    async function shareWithPartner() {
+        const partnerId = document.getElementById('partnerSelect').value;
+        const statusEl = document.getElementById('shareStatus');
+        
+        if (!partnerId) {
+            statusEl.textContent = "Please select a partner organization first.";
+            statusEl.className = "mt-2 text-center small text-danger";
+            statusEl.classList.remove('d-none');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/badges/share', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    badge_id: {{ badge.id }},
+                    partner_id: partnerId
+                })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                statusEl.textContent = "Successfully shared with partner!";
+                statusEl.className = "mt-2 text-center small text-success";
+                statusEl.classList.remove('d-none');
+                setTimeout(() => { statusEl.classList.add('d-none'); }, 3000);
+            } else {
+                statusEl.textContent = "Error: " + data.error;
+                statusEl.className = "mt-2 text-center small text-danger";
+                statusEl.classList.remove('d-none');
+            }
+        } catch (error) {
+            statusEl.textContent = "Failed to communicate with server.";
+            statusEl.className = "mt-2 text-center small text-danger";
+            statusEl.classList.remove('d-none');
         }
     }
 </script>

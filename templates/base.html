@@ -37,8 +37,7 @@
         <div class="container">
             <a class="navbar-brand fw-bold"
                 href="{{ url_for('dashboard') if session.get('user_id') else url_for('login') }}">
-                <img src="https://cryptologos.cc/logos/algorand-algo-logo.png" alt="Algorand" height="30"
-                    class="me-2">CampusTrust
+                CampusTrust
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>

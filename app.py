@@ -26,6 +26,7 @@ from algorand.advanced_features import (
     compile_program
 )
 from utils.rewards import ensure_campus_token, distribute_reward, generate_student_wallet, opt_in_asset
+from utils.badge_utils import issue_badge
 from dotenv import load_dotenv
 
 load_dotenv() # Load environment variables from .env file
@@ -249,6 +250,27 @@ def create_tables():
         FOREIGN KEY(user_id) REFERENCES users(id),
         UNIQUE(proposal_id, user_id)
     )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS digital_badges (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        issuer_id INTEGER NOT NULL,
+        group_id INTEGER,
+        badge_name TEXT NOT NULL,
+        description TEXT,
+        asset_id INTEGER,
+        tx_id TEXT,
+        image_url TEXT,
+        issue_date TEXT,
+        FOREIGN KEY(user_id) REFERENCES users(id),
+        FOREIGN KEY(issuer_id) REFERENCES users(id),
+        FOREIGN KEY(group_id) REFERENCES groups(id)
+    )''')
+    
+    try:
+        c.execute("ALTER TABLE digital_badges ADD COLUMN group_id INTEGER")
+    except sqlite3.OperationalError:
+        pass # Column likely exists
 
     # Transaction Logs Table
     c.execute('''CREATE TABLE IF NOT EXISTS transaction_logs (
@@ -2396,6 +2418,106 @@ def prepare_asset_creation():
         return jsonify({'txn_b64': txn_b64})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# ==========================================
+# DIGITAL BADGES
+# ==========================================
+
+@app.route('/badges')
+def list_badges():
+    user = get_current_user()
+    if not user:
+        return redirect(url_for('login'))
+        
+    conn = get_db_connection()
+    badges = conn.execute('''
+        SELECT b.*, u.name as issuer_name 
+        FROM digital_badges b
+        LEFT JOIN users u ON b.issuer_id = u.id
+        WHERE b.user_id = ?
+        ORDER BY b.issue_date DESC
+    ''', (user['id'],)).fetchall()
+    conn.close()
+    
+    return render_template('badges.html', badges=badges)
+
+@app.route('/badges/<int:badge_id>')
+def view_badge(badge_id):
+    conn = get_db_connection()
+    badge = conn.execute('''
+        SELECT b.*, u.name as recipient_name, u.student_id, i.name as issuer_name
+        FROM digital_badges b
+        LEFT JOIN users u ON b.user_id = u.id
+        LEFT JOIN users i ON b.issuer_id = i.id
+        WHERE b.id = ?
+    ''', (badge_id,)).fetchone()
+    conn.close()
+    
+    if not badge:
+        flash('Badge not found.')
+        return redirect(url_for('dashboard'))
+        
+    return render_template('badge_detail.html', badge=badge)
+
+@app.route('/api/badges/issue', methods=['POST'])
+def api_issue_badge():
+    user = get_current_user()
+    if not user:
+        return jsonify({"success": False, "error": "Not logged in"}), 401
+        
+    data = request.json
+    recipient_id = data.get('recipient_id')
+    group_id = data.get('group_id')
+    badge_name = data.get('badge_name')
+    description = data.get('description')
+    image_url = data.get('image_url', '/static/img/default_badge.png')
+    
+    if not all([recipient_id, badge_name, description]):
+        return jsonify({"success": False, "error": "Missing required fields"}), 400
+        
+    # Check if recipient exists
+    conn = get_db_connection()
+    recipient = conn.execute('SELECT * FROM users WHERE id = ?', (recipient_id,)).fetchone()
+    
+    if not recipient:
+        conn.close()
+        return jsonify({"success": False, "error": "Recipient not found"}), 404
+        
+    # Permission check: Issuer must be Admin or Group Lead
+    is_admin = user['role'] == 'admin'
+    is_lead = False
+    if group_id:
+        lead_check = conn.execute('SELECT id FROM group_members WHERE group_id = ? AND user_id = ? AND role = "lead"', (group_id, user['id'])).fetchone()
+        if lead_check:
+            is_lead = True
+            
+    if not is_admin and not is_lead:
+        conn.close()
+        return jsonify({"success": False, "error": "Unauthorized: Only Admins or Group Leads can issue badges."}), 403
+
+    # Check if user already got a badge for this group
+    if group_id:
+        existing = conn.execute('SELECT id FROM digital_badges WHERE user_id = ? AND group_id = ?', (recipient_id, group_id)).fetchone()
+        if existing:
+            conn.close()
+            return jsonify({"success": False, "error": "User already has a badge for this group."}), 400
+            
+        # Check for incomplete tasks
+        pending_tasks = conn.execute('SELECT id FROM group_tasks WHERE group_id = ? AND status != "completed"', (group_id,)).fetchone()
+        if pending_tasks:
+            conn.close()
+            return jsonify({"success": False, "error": "Cannot issue badge: Some tasks in this group are not yet completed."}), 400
+            
+        # Check for incomplete milestones
+        pending_milestones = conn.execute('SELECT id FROM group_milestones WHERE group_id = ? AND completed_date IS NULL', (group_id,)).fetchone()
+        if pending_milestones:
+            conn.close()
+            return jsonify({"success": False, "error": "Cannot issue badge: Some milestones in this group are not yet completed."}), 400
+            
+    conn.close()
+        
+    result = issue_badge(recipient_id, user['id'], badge_name, description, image_url, group_id)
+    return jsonify(result)
 
 @app.route('/api/prepare_nft_minting', methods=['POST'])
 def prepare_nft_minting():

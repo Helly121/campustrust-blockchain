@@ -115,42 +115,6 @@
     <script src="{{ url_for('static', filename='js/wallet.js') }}"></script>
 
     {% block extra_js %}{% endblock %}
-    <!-- Chatbot Widget -->
-    <div id="chat-container" class="position-fixed bottom-0 end-0 p-4" style="z-index: 1050;">
-        <!-- Chat Button -->
-        <button id="chat-toggle" class="btn btn-primary rounded-circle shadow-lg p-3"
-            style="width: 60px; height: 60px;">
-            <i class="fas fa-robot fa-lg"></i>
-        </button>
-
-        <!-- Chat Window -->
-        <div id="chat-widget" class="card shadow-lg d-none mt-3"
-            style="width: 350px; height: 450px; position: absolute; bottom: 80px; right: 20px;">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <span class="fw-bold"><i class="fas fa-robot me-2"></i>CampusBot</span>
-                <button id="chat-close" class="btn btn-sm btn-link text-white"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="card-body overflow-auto" id="chat-messages" style="background: #f8f9fa;">
-                <div class="chat-message text-start mb-2">
-                    <div class="d-inline-block p-2 rounded bg-light text-dark border"
-                        style="border-radius: 15px 15px 15px 0;">
-                        Hi! I'm CampusBot. Ask me about your attendance, the DAO, or upcoming events!
-                    </div>
-                </div>
-            </div>
-            <div class="card-footer bg-white">
-                <div class="input-group">
-                    <input type="text" id="chat-input" class="form-control" placeholder="Ask a question..."
-                        aria-label="Ask a question">
-                    <button class="btn btn-primary" type="button" id="chat-send"><i
-                            class="fas fa-paper-plane"></i></button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Chatbot Logic -->
-    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 </body>
 
 </html>

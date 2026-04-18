@@ -224,6 +224,32 @@ def create_tables():
         FOREIGN KEY(group_id) REFERENCES groups(id)
     )''')
 
+    c.execute('''CREATE TABLE IF NOT EXISTS group_proposals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        group_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        amount_algo REAL NOT NULL,
+        recipient_address TEXT NOT NULL,
+        status TEXT DEFAULT 'active',
+        yes_votes INTEGER DEFAULT 0,
+        no_votes INTEGER DEFAULT 0,
+        end_time TEXT,
+        tx_id TEXT,
+        created_date TIMESTAMP,
+        FOREIGN KEY(group_id) REFERENCES groups(id)
+    )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS proposal_votes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        proposal_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        choice TEXT NOT NULL,
+        FOREIGN KEY(proposal_id) REFERENCES group_proposals(id),
+        FOREIGN KEY(user_id) REFERENCES users(id),
+        UNIQUE(proposal_id, user_id)
+    )''')
+
     # Transaction Logs Table
     c.execute('''CREATE TABLE IF NOT EXISTS transaction_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1201,15 +1227,14 @@ def feedback_form(form_id):
                 comment = request.form.get(comment_key, '')
 
                 conn.execute('''INSERT INTO feedback_responses 
-                              (form_id, user_id, question_id, response_text, tx_id, is_anonymous, comments, response_date)
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                              (form_id, user_id, question_id, response_text, tx_id, is_anonymous, response_date)
+                              VALUES (?, ?, ?, ?, ?, ?, ?)''',
                            (form_id, 
                             user['id'] if not is_anonymous else None, 
                             q['id'], 
                             response_text, 
                             txid if not is_anonymous else None,
                             1 if is_anonymous else 0,
-                            comment,
                             response_date))
 
         conn.commit()
@@ -1264,7 +1289,7 @@ def feedback_results(form_id):
     results = {}
     for q in questions:
         # Get individual responses with tx_id and comments
-        responses = conn.execute('''SELECT response_text, is_anonymous, tx_id, comments
+        responses = conn.execute('''SELECT response_text, is_anonymous, tx_id
                                    FROM feedback_responses
                                    WHERE question_id = ?
                                    ORDER BY id DESC''',
@@ -2335,157 +2360,6 @@ def prepare_payment():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-from google import genai
-from google.genai import types
-
-# Configure Gemini Client
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
-if not GEMINI_API_KEY:
-    print("Warning: GEMINI_API_KEY not found in environment variables.")
-
-@app.route('/api/chat', methods=['POST'])
-def chat_api():
-    data = request.json
-    message = data.get('message', '').strip()
-    user = get_current_user() # Might be None
-    
-    conn = get_db_connection()
-    response_text = ""
-    
-    # DEBUG LOGGING
-    print(f"Chat request received: {message}")
-    print(f"API Key present: {bool(GEMINI_API_KEY)}")
-    
-    # 1. GATHER CONTEXT (Internal Data)
-    context_data = ""
-    
-    # User Info
-    if user:
-        # Attendance - DETAILED BREAKDOWN
-        try:
-            # Join sessions with records to get per-course stats
-            # We need all sessions, and match with user's records
-            # This query gets all sessions and counts user's presence
-            course_stats = conn.execute('''
-                SELECT 
-                    s.course_code,
-                    COUNT(s.id) as total_sessions,
-                    SUM(CASE WHEN r.status = 'present' THEN 1 ELSE 0 END) as attended
-                FROM attendance_sessions s
-                LEFT JOIN attendance_records r ON s.id = r.session_id AND r.user_id = ?
-                GROUP BY s.course_code
-            ''', (user['id'],)).fetchall()
-            
-            if course_stats:
-                context_data += f"User: {user['name']} (Role: {user['role']}).\nVerified Attendance Data:\n"
-                for stat in course_stats:
-                    code = stat['course_code']
-                    attended = stat['attended'] if stat['attended'] else 0
-                    total = stat['total_sessions']
-                    pct = (attended / total * 100) if total > 0 else 0
-                    context_data += f"- {code}: {attended}/{total} classes attended ({pct:.1f}%)\n"
-            else:
-                 context_data += f"User: {user['name']} (Role: {user['role']}). No attendance sessions recorded yet.\n"
-
-        except Exception as e:
-            print(f"Attendance Query Error: {e}")
-            context_data += f"User: {user['name']}. Attendance data currently unavailable.\n"
-        
-        # User's Groups
-        try:
-            groups = conn.execute('''
-                SELECT g.name FROM groups g JOIN group_members gm ON g.id = gm.group_id WHERE gm.user_id = ?
-            ''', (user['id'],)).fetchall()
-            group_names = [g['name'] for g in groups]
-            context_data += f"Member of Groups: {', '.join(group_names)}.\n"
-        except:
-             pass
-    else:
-        context_data += "User is currently NOT logged in. Ask them to login for personal stats.\n"
-        
-    # DAO Info (General)
-    try:
-        dao_group = conn.execute('SELECT * FROM groups WHERE treasury_address IS NOT NULL LIMIT 1').fetchone()
-        if dao_group:
-             context_data += f"Main DAO: {dao_group['name']} (Treasury Active).\n"
-    except:
-        pass
-
-    # 2. INTELLIGENT SYSTEM PROMPT (Optimized)
-    system_instruction = f"""
-    You are CampusBot for CampusTrust.
-    
-    Source Data:
-    {context_data}
-    
-    Directives:
-    - Precise attendance counts.
-    - Blockchain expert.
-    - No hallucinations.
-    """
-    
-    try:
-        if GEMINI_API_KEY:
-            client = genai.Client(api_key=GEMINI_API_KEY)
-            
-            models_to_try = [
-                'gemini-2.0-flash-lite',
-                'gemini-1.5-flash',
-                'gemini-2.0-flash',
-            ]
-            
-            response = None
-            last_error = None
-            
-            # Implementation of Retries with Exponential Backoff
-            max_retries = 3
-            
-            for model_name in models_to_try:
-                for attempt in range(max_retries):
-                    try:
-                        print(f"Attempting {model_name} (Attempt {attempt+1})")
-                        response = client.models.generate_content(
-                            model=model_name,
-                            contents=f"{system_instruction}\n\nUSER QUESTION: {message}"
-                        )
-                        if response:
-                            break
-                    except Exception as e:
-                        last_error = e
-                        error_str = str(e).upper()
-                        if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
-                            wait_time = (attempt + 1) * 2 # 2s, 4s, 6s...
-                            print(f"Rate limited. Waiting {wait_time}s...")
-                            time.sleep(wait_time)
-                        else:
-                            # If it's not a rate limit, don't retry this model
-                            print(f"Non-retryable error with {model_name}: {e}")
-                            break
-                
-                if response:
-                    print(f"Success with {model_name}")
-                    break
-            
-            if response:
-                response_text = response.text
-            else:
-                if "429" in str(last_error) or "RESOURCE_EXHAUSTED" in str(last_error):
-                     response_text = "I'm receiving too many requests. I tried to wait, but the limit is still active. Please try again in 1 minute."
-                else:
-                     response_text = "I'm having trouble connecting to my AI brain. Please try again later."
-
-        else:
-            response_text = "Chatbot is offline (API Key missing)."
-            
-    except Exception as e:
-        import traceback
-        print(f"Gemini Global Error: {e}")
-        traceback.print_exc()
-        response_text = "An unexpected error occurred."
-        
-    conn.close()
-    return jsonify({'response': response_text})
 
 
 @app.route('/api/prepare_asset_creation', methods=['POST'])

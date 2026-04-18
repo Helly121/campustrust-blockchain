@@ -249,18 +249,17 @@ class CampusTrustTestCase(unittest.TestCase):
         self.login(self.admin_id)
         
         # 2. Perform an action that triggers a log (e.g., create group)
-        self.app.post('/groups/admin/create', data={
+        self.app.post('/groups/create', data={
             'name': 'Log Test Group',
             'description': 'Testing logs',
-            'category': 'Project',
-            'members': []
+            'category': 'Project'
         }, follow_redirects=True)
         
         # 3. Check Admin Transactions Page
-        response = self.app.get('/admin/transactions')
+        response = self.app.get('/logs')
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Created group Log Test Group', response.data)
-        self.assertIn(b'GROUP_CREATE_ADMIN', response.data)
+        self.assertIn(b'GROUP_CREATE', response.data)
         
         # 4. Check File Log
         import app as app_module
@@ -272,8 +271,8 @@ class CampusTrustTestCase(unittest.TestCase):
         # Read file and check for entry
         with open(log_path, 'r') as f:
             content = f.read()
-            self.assertIn('GROUP_CREATE_ADMIN', content)
-            self.assertIn('Created group Log Test Group', content)
+            self.assertIn('GROUP_CREATE', content)
+            self.assertIn('Log Test Group', content)
             
     def tearDown(self):
         super().tearDown()

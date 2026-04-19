@@ -32,10 +32,12 @@
                     </div>
                     {% endif %}
 
+                    {% if session.get('role') == 'admin' or user.role == 'admin' %}
                     <div class="mb-4 form-check">
                         <input type="checkbox" class="form-check-input" id="mint_nft" name="mint_nft">
                         <label class="form-check-label" for="mint_nft">Mint as NFT (Permanent Verification)</label>
                     </div>
+                    {% endif %}
 
                     <div class="d-grid gap-2">
                         <button type="submit" class="btn btn-primary btn-lg">

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}User Management - CampusTrust{% endblock %}
+
+{% block content %}
+<div class="row mb-5 fade-in">
+    <div class="col-md-8">
+        <h1 class="display-5 fw-bold text-primary mb-0">User Management</h1>
+        <p class="lead text-muted">Manage students and their verifiable identities.</p>
+    </div>
+    <div class="col-md-4 text-md-end d-flex align-items-center justify-content-md-end">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary rounded-pill">
+            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 fade-in">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold"><i class="fas fa-users me-2 text-primary"></i>Student Directory</h5>
+        <div class="input-group style="width: 300px;">
+            <span class="input-group-text bg-light border-0"><i class="fas fa-search text-muted"></i></span>
+            <input type="text" id="userSearch" class="form-control bg-light border-0" placeholder="Search students...">
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="userTable">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Student ID</th>
+                        <th>Name</th>
+                        <th>Wallet Address</th>
+                        <th>Face ID Status</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td class="ps-4">
+                            <span class="badge bg-light text-dark border fw-medium px-3 py-2 rounded-pill">
+                                {{ student['student_id'] }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="fw-bold">{{ student['name'] }}</div>
+                        </td>
+                        <td>
+                            {% if student['wallet_address'] %}
+                            <code class="small text-muted" title="{{ student['wallet_address'] }}">
+                                {{ student['wallet_address'][:8] }}...{{ student['wallet_address'][-8:] }}
+                            </code>
+                            {% else %}
+                            <span class="text-muted small italic">Not Generated</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if student['face_descriptor'] %}
+                            <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill">
+                                <i class="fas fa-check-circle me-1"></i>Configured
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary px-3 py-2 rounded-pill">
+                                <i class="fas fa-times-circle me-1"></i>Not Set
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-light border dropdown-toggle px-3 rounded-pill" type="button" data-bs-toggle="dropdown">
+                                    Manage
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                                    {% if student['face_descriptor'] %}
+                                    <li>
+                                        <form action="{{ url_for('admin_reset_face', target_user_id=student['id']) }}" method="post" onsubmit="return confirm('WARNING: Are you sure you want to reset Face ID for {{ student['name'] }}? They will need to re-register before they can mark attendance.');">
+                                            <button type="submit" class="dropdown-item text-danger py-2">
+                                                <i class="fas fa-user-slash me-2"></i>Reset Face ID
+                                            </button>
+                                        </form>
+                                    </li>
+                                    {% else %}
+                                    <li><span class="dropdown-item disabled py-2">Face ID already cleared</span></li>
+                                    {% endif %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item py-2" href="#"><i class="fas fa-history me-2"></i>View logs</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if not students %}
+        <div class="text-center py-5">
+            <i class="fas fa-user-graduate fa-3x text-muted mb-3 opacity-25"></i>
+            <p class="text-muted">No students found in the database.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    document.getElementById('userSearch').addEventListener('keyup', function() {
+        let filter = this.value.toLowerCase();
+        let rows = document.querySelectorAll('#userTable tbody tr');
+        
+        rows.forEach(row => {
+            let text = row.innerText.toLowerCase();
+            row.style.display = text.includes(filter) ? '' : 'none';
+        });
+    });
+</script>
+{% endblock %}

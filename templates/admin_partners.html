@@ -31,7 +31,8 @@
                                 <th>Type</th>
                                 <th>Website</th>
                                 <th>Contact Email</th>
-                                <th>Partner Landing Page</th>
+                                <th>Login ID</th>
+                                <th>Dashboard</th>
                                 <th class="text-end pe-4">Actions</th>
                             </tr>
                         </thead>
@@ -59,10 +60,9 @@
                                     {% endif %}
                                 </td>
                                 <td>{{ partner.contact_email or '-' }}</td>
+                                <td><code class="text-primary fw-bold">{{ partner.login_id }}</code></td>
                                 <td>
-                                    <a href="{{ url_for('partner_inbox', partner_id=partner.id) }}" class="btn btn-sm btn-link text-decoration-none">
-                                        View Inbox <i class="fas fa-arrow-right ms-1"></i>
-                                    </a>
+                                    <span class="text-muted small italic">Login required to view</span>
                                 </td>
                                 <td class="text-end pe-4">
                                     <form action="{{ url_for('delete_partner', partner_id=partner.id) }}" method="POST" onsubmit="return confirm('Remove this partner? Permanent shares will be lost.')">
@@ -114,6 +114,16 @@
                 <div class="mb-3">
                     <label class="form-label">Contact Email (Optional)</label>
                     <input type="email" name="email" class="form-control" placeholder="recruiter@example.com">
+                </div>
+                <hr>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Partner Login ID</label>
+                    <input type="text" name="login_id" class="form-control" required placeholder="e.g. google_recruiter">
+                    <small class="text-muted">Unique ID for partner login.</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Initial Password</label>
+                    <input type="password" name="password" class="form-control" required>
                 </div>
             </div>
             <div class="modal-footer bg-light border-0">

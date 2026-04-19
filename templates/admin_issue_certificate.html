@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Issue Certificate - CampusTrust Admin{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center fade-in">
+    <div class="col-lg-6">
+        <div class="card shadow-lg border-0 overflow-hidden">
+            <div class="card-header bg-primary text-white p-4">
+                <h3 class="mb-0 fw-bold"><i class="fas fa-certificate me-2"></i>Issue Academic Certificate</h3>
+                <p class="mb-0 opacity-75">Upload a verifiable record for a specific student.</p>
+            </div>
+            <div class="card-body p-5">
+                <form action="{{ url_for('admin_issue_certificate') }}" method="post" enctype="multipart/form-data" id="issueForm">
+                    <div class="mb-4">
+                        <label for="student_id" class="form-label fw-bold">Recipient Student ID</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-user-graduate text-muted"></i></span>
+                            <input type="text" name="student_id" id="student_id" class="form-control bg-light border-start-0" 
+                                placeholder="e.g. 12414733" required>
+                        </div>
+                        <div class="form-text">Enter the official Student ID as registered in the system.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="certificate" class="form-label fw-bold">Certificate Document (PDF/Image)</label>
+                        <div class="input-group">
+                            <input type="file" name="certificate" id="certificate" class="form-control" required 
+                                accept=".pdf,.png,.jpg,.jpeg">
+                        </div>
+                        <div class="form-text">The file will be hashed and anchored to the Algorand blockchain.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check form-switch p-3 bg-light rounded border shadow-sm">
+                            <input class="form-check-input ms-0 me-2" type="checkbox" name="mint_nft" id="mint_nft">
+                            <label class="form-check-label fw-bold" for="mint_nft">
+                                <i class="fas fa-gem text-warning me-1"></i> Mint as Verifiable NFT
+                            </label>
+                            <p class="small text-muted mb-0 mt-1">This will create a unique, non-fungible asset on the blockchain for this certificate.</p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info border-0 shadow-sm mb-4">
+                        <div class="d-flex">
+                            <i class="fas fa-info-circle fa-lg me-3 mt-1"></i>
+                            <div>
+                                <h6 class="alert-heading fw-bold mb-1">Blockchain Verification</h6>
+                                <p class="mb-0 small">This action will trigger a blockchain transaction. The proof of issuance will be immutable and publicly verifiable.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg shadow-sm rounded-pill" id="submitBtn">
+                            <i class="fas fa-paper-plane me-2"></i>Issue Certificate
+                        </button>
+                    </div>
+                </form>
+
+                <div id="processingState" class="text-center py-4" style="display: none;">
+                    <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+                    <h5 class="fw-bold">Anchoring to Blockchain...</h5>
+                    <p class="text-muted">Please do not refresh the page while the transaction is being processed.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-link text-decoration-none text-muted">
+                <i class="fas fa-arrow-left me-1"></i> Return to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('issueForm').addEventListener('submit', function() {
+        document.getElementById('issueForm').style.display = 'none';
+        document.getElementById('processingState').style.display = 'block';
+        document.getElementById('submitBtn').disabled = true;
+    });
+</script>
+{% endblock %}

@@ -15,7 +15,8 @@
                 {% if user['face_descriptor'] %}
                 <div class="alert alert-success border-0 shadow-sm mb-4">
                     <h4 class="alert-heading"><i class="fas fa-check-circle me-2"></i>Face ID Is Configured</h4>
-                    <p class="mb-0">You have already registered your face. You can re-register if needed.</p>
+                    <p class="mb-0">You have already registered your face security profile. <strong>Registration is now locked.</strong></p>
+                    <p class="small mt-2 mb-0 text-muted">If you need to update your Face ID, please contact a system administrator for permission.</p>
                 </div>
                 {% else %}
                 <div class="alert alert-warning border-0 shadow-sm mb-4">
@@ -44,7 +45,9 @@
                     Only <strong>one face</strong> should be visible.
                 </div>
 
-                <button id="enrollBtn" class="btn btn-primary btn-lg px-5 shadow-sm" disabled onclick="enrollFace()">
+                <button id="enrollBtn" class="btn btn-primary btn-lg px-5 shadow-sm" 
+                    {% if user['face_descriptor'] and user['role'] != 'admin' %}disabled title="Registration Locked"{% else %}disabled{% endif %} 
+                    onclick="enrollFace()">
                     <i class="fas fa-camera me-2"></i>Capture & Register Face
                 </button>
             </div>

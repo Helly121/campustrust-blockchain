@@ -290,15 +290,35 @@ def create_tables():
         type TEXT NOT NULL,
         website TEXT,
         contact_email TEXT,
+        login_id TEXT UNIQUE,
+        password_hash TEXT,
         added_date TEXT
     )''')
+    
+    try:
+        c.execute("ALTER TABLE partners ADD COLUMN login_id TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        c.execute("ALTER TABLE partners ADD COLUMN password_hash TEXT")
+    except sqlite3.OperationalError:
+        pass
 
     c.execute('''CREATE TABLE IF NOT EXISTS badge_shares (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        badge_id INTEGER NOT NULL,
-        partner_id INTEGER NOT NULL,
+        badge_id INTEGER,
+        partner_id INTEGER,
         shared_date TEXT,
         FOREIGN KEY(badge_id) REFERENCES digital_badges(id),
+        FOREIGN KEY(partner_id) REFERENCES partners(id)
+    )''')
+    
+    c.execute('''CREATE TABLE IF NOT EXISTS certificate_shares (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cert_id INTEGER,
+        partner_id INTEGER,
+        shared_date TEXT,
+        FOREIGN KEY(cert_id) REFERENCES certificates(id),
         FOREIGN KEY(partner_id) REFERENCES partners(id)
     )''')
     
@@ -337,8 +357,12 @@ def log_transaction(user_id, action, details, tx_id=None):
 def get_current_user():
     if 'user_id' not in session:
         return None
+    
     conn = get_db_connection()
-    user = conn.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
+    if session.get('role') == 'partner':
+        user = conn.execute('SELECT *, "partner" as role FROM partners WHERE id = ?', (session['user_id'],)).fetchone()
+    else:
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
     conn.close()
     return user
 
@@ -373,18 +397,31 @@ def register():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        student_id = request.form['student_id']
+        login_id = request.form['student_id'] # Recycled field for Partner ID as well
         password = request.form['password']
         password_hash = hashlib.sha256(password.encode()).hexdigest()
         
         conn = get_db_connection()
+        # 1. Check users table
         user = conn.execute('SELECT * FROM users WHERE student_id = ? AND password_hash = ?',
-                            (student_id, password_hash)).fetchone()
-        conn.close()
+                            (login_id, password_hash)).fetchone()
         
         if user:
             session['user_id'] = user['id']
+            session['role'] = user['role']
+            conn.close()
             return redirect(url_for('dashboard'))
+            
+        # 2. Check partners table
+        partner = conn.execute('SELECT * FROM partners WHERE login_id = ? AND password_hash = ?',
+                              (login_id, password_hash)).fetchone()
+        conn.close()
+        
+        if partner:
+            session['user_id'] = partner['id']
+            session['role'] = 'partner'
+            return redirect(url_for('partner_dashboard'))
+            
         flash('Invalid credentials')
     return render_template('login.html')
 
@@ -406,6 +443,10 @@ def setup_face():
         if not descriptor or len(descriptor) != 128:
             return jsonify({'error': 'Invalid face descriptor'}), 400
             
+        # SECURITY CHECK: Prevent re-setup if already configured (unless Admin)
+        if user['face_descriptor'] and user['role'] != 'admin':
+             return jsonify({'error': 'Face ID already configured. Contact Admin to reset.'}), 403
+
         import json
         descriptor_json = json.dumps(descriptor)
         
@@ -477,6 +518,47 @@ def dashboard():
             'overall_pct': overall_pct
         }
             
+    # Admin specific data: All certificates and badges for the whole system
+    all_certs = []
+    all_badges = []
+    search_q = request.args.get('q', '').strip()
+    
+    if user['role'] == 'admin':
+        if search_q:
+            query_q = f"%{search_q}%"
+            all_certs = conn.execute('''
+                SELECT c.*, u.name as user_name 
+                FROM certificates c 
+                JOIN users u ON c.user_id = u.id 
+                WHERE u.name LIKE ?
+                ORDER BY c.upload_date DESC
+            ''', (query_q,)).fetchall()
+            
+            all_badges = conn.execute('''
+                SELECT b.*, u.name as user_name, i.name as issuer_name 
+                FROM digital_badges b 
+                JOIN users u ON b.user_id = u.id 
+                LEFT JOIN users i ON b.issuer_id = i.id 
+                WHERE u.name LIKE ?
+                ORDER BY b.issue_date DESC
+            ''', (query_q,)).fetchall()
+        else:
+            all_certs = conn.execute('''
+                SELECT c.*, u.name as user_name 
+                FROM certificates c 
+                JOIN users u ON c.user_id = u.id 
+                ORDER BY c.upload_date DESC
+            ''').fetchall()
+            
+            all_badges = conn.execute('''
+                SELECT b.*, u.name as user_name, i.name as issuer_name 
+                FROM digital_badges b 
+                JOIN users u ON b.user_id = u.id 
+                LEFT JOIN users i ON b.issuer_id = i.id 
+                ORDER BY b.issue_date DESC
+            ''').fetchall()
+
+    partners = conn.execute('SELECT * FROM partners ORDER BY name').fetchall()
     conn.close()
     
     return render_template('dashboard.html', 
@@ -484,8 +566,11 @@ def dashboard():
                            certs=certs, 
                            elections=elections, 
                            invites=invites, 
+                           partners=partners,
                            attendance_stats=attendance_stats,
-                           attendance_summary=attendance_summary if user['role'] == 'student' else None)
+                           attendance_summary=attendance_summary if user['role'] == 'student' else None,
+                           all_certs=all_certs,
+                           all_badges=all_badges)
 
 @app.route('/upload_certificate', methods=['GET', 'POST'])
 def upload_certificate():
@@ -560,8 +645,8 @@ def upload_certificate():
                 if not txid:
                     raise Exception("Failed to store certificate hash on-chain")
                 
-                # 2. Mint NFT (New Feature)
-                should_mint = request.form.get('mint_nft') == 'on'
+                # 2. Mint NFT (New Feature) - ONLY FOR ADMINS
+                should_mint = (request.form.get('mint_nft') == 'on') and (user['role'] == 'admin')
                 asset_id = None
                 
                 if should_mint:
@@ -2541,28 +2626,65 @@ def api_issue_badge():
     result = issue_badge(recipient_id, user['id'], badge_name, description, image_url, group_id)
     return jsonify(result)
 
-@app.route('/view/partner/<int:partner_id>')
-def partner_inbox(partner_id):
-    conn = get_db_connection()
-    partner = conn.execute('SELECT * FROM partners WHERE id = ?', (partner_id,)).fetchone()
-    if not partner:
-        conn.close()
-        flash('Partner not found')
+@app.route('/partner/dashboard')
+def partner_dashboard():
+    user = get_current_user()
+    if not user or user['role'] != 'partner':
+        flash('Unauthorized Access')
         return redirect(url_for('login'))
         
-    # Get all shared badges for this partner
-    shared_badges = conn.execute('''
-        SELECT b.*, bs.shared_date, u.name as recipient_name, u.student_id, i.name as issuer_name
-        FROM badge_shares bs
-        JOIN digital_badges b ON bs.badge_id = b.id
-        JOIN users u ON b.user_id = u.id
-        JOIN users i ON b.issuer_id = i.id
-        WHERE bs.partner_id = ?
-        ORDER BY bs.shared_date DESC
-    ''', (partner_id,)).fetchall()
-    conn.close()
+    search_q = request.args.get('q', '').strip()
+    conn = get_db_connection()
     
-    return render_template('partner_inbox.html', partner=partner, shared_badges=shared_badges)
+    if search_q:
+        query_q = f"%{search_q}%"
+        # Get filtered shared badges
+        shared_badges = conn.execute('''
+            SELECT b.*, bs.shared_date, u.name as recipient_name, u.student_id, i.name as issuer_name
+            FROM badge_shares bs
+            JOIN digital_badges b ON bs.badge_id = b.id
+            JOIN users u ON b.user_id = u.id
+            JOIN users i ON b.issuer_id = i.id
+            WHERE bs.partner_id = ? AND u.name LIKE ?
+            ORDER BY bs.shared_date DESC
+        ''', (user['id'], query_q)).fetchall()
+        
+        # Get filtered shared certificates
+        shared_certificates = conn.execute('''
+            SELECT c.*, cs.shared_date, u.name as recipient_name, u.student_id
+            FROM certificate_shares cs
+            JOIN certificates c ON cs.cert_id = c.id
+            JOIN users u ON c.user_id = u.id
+            WHERE cs.partner_id = ? AND u.name LIKE ?
+            ORDER BY cs.shared_date DESC
+        ''', (user['id'], query_q)).fetchall()
+    else:
+        # Get all shared badges for this partner
+        shared_badges = conn.execute('''
+            SELECT b.*, bs.shared_date, u.name as recipient_name, u.student_id, i.name as issuer_name
+            FROM badge_shares bs
+            JOIN digital_badges b ON bs.badge_id = b.id
+            JOIN users u ON b.user_id = u.id
+            JOIN users i ON b.issuer_id = i.id
+            WHERE bs.partner_id = ?
+            ORDER BY bs.shared_date DESC
+        ''', (user['id'],)).fetchall()
+        
+        # Get all shared certificates for this partner
+        shared_certificates = conn.execute('''
+            SELECT c.*, cs.shared_date, u.name as recipient_name, u.student_id
+            FROM certificate_shares cs
+            JOIN certificates c ON cs.cert_id = c.id
+            JOIN users u ON c.user_id = u.id
+            WHERE cs.partner_id = ?
+            ORDER BY cs.shared_date DESC
+        ''', (user['id'],)).fetchall()
+    
+    conn.close()
+    return render_template('partner_dashboard.html', 
+                           partner=user, 
+                           shared_badges=shared_badges,
+                           shared_certificates=shared_certificates)
 
 @app.route('/admin/partners', methods=['GET', 'POST'])
 def admin_partners():
@@ -2577,14 +2699,22 @@ def admin_partners():
         p_type = request.form.get('type')
         website = request.form.get('website')
         email = request.form.get('email')
+        login_id = request.form.get('login_id')
+        password = request.form.get('password')
         
-        if name and p_type:
-            conn.execute('INSERT INTO partners (name, type, website, contact_email, added_date) VALUES (?, ?, ?, ?, ?)',
-                        (name, p_type, website, email, datetime.datetime.now().isoformat()))
-            conn.commit()
-            flash(f'Partner {name} added successfully!')
+        if name and p_type and login_id and password:
+            pw_hash = hashlib.sha256(password.encode()).hexdigest()
+            try:
+                conn.execute('''INSERT INTO partners 
+                               (name, type, website, contact_email, login_id, password_hash, added_date) 
+                               VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                            (name, p_type, website, email, login_id, pw_hash, datetime.datetime.now().isoformat()))
+                conn.commit()
+                flash(f'Partner {name} enrolled successfully!')
+            except sqlite3.IntegrityError:
+                flash('Login ID already exists.')
         else:
-            flash('Name and Type are required')
+            flash('Name, Type, Login ID, and Password are required')
             
     partners = conn.execute('SELECT * FROM partners ORDER BY name').fetchall()
     conn.close()
@@ -2602,6 +2732,116 @@ def delete_partner(partner_id):
     conn.close()
     flash('Partner removed')
     return redirect(url_for('admin_partners'))
+
+@app.route('/admin/users')
+def admin_users():
+    user = get_current_user()
+    if not user or user['role'] != 'admin':
+        flash('Admin only')
+        return redirect(url_for('dashboard'))
+        
+    conn = get_db_connection()
+    students = conn.execute('SELECT * FROM users WHERE role = "student" ORDER BY student_id').fetchall()
+    conn.close()
+    
+    return render_template('admin_users.html', students=students, user=user)
+
+@app.route('/admin/reset_face/<int:target_user_id>', methods=['POST'])
+def admin_reset_face(target_user_id):
+    user = get_current_user()
+    if not user or user['role'] != 'admin':
+        return jsonify({"success": False, "error": "Unauthorized"}), 403
+        
+    conn = get_db_connection()
+    # Verify user exists
+    target = conn.execute('SELECT name FROM users WHERE id = ?', (target_user_id,)).fetchone()
+    if not target:
+        conn.close()
+        flash('User not found')
+        return redirect(url_for('admin_users'))
+        
+    conn.execute('UPDATE users SET face_descriptor = NULL WHERE id = ?', (target_user_id,))
+    conn.commit()
+    conn.close()
+    
+    log_transaction(user['id'], 'FACE_RESET_ADMIN', f"Reset Face ID for user {target_user_id} ({target['name']})")
+    flash(f'Face ID for {target["name"]} has been reset.')
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/issue_certificate', methods=['GET', 'POST'])
+def admin_issue_certificate():
+    user = get_current_user()
+    if not user or user['role'] != 'admin':
+        flash('Admin only')
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        student_id = request.form.get('student_id')
+        file = request.files.get('certificate')
+        
+        if not student_id or not file:
+            flash('Both Student ID and Certificate File are required.')
+            return redirect(url_for('admin_issue_certificate'))
+            
+        conn = get_db_connection()
+        target_user = conn.execute('SELECT id, name FROM users WHERE student_id = ?', (student_id,)).fetchone()
+        
+        if not target_user:
+            conn.close()
+            flash(f'User with Student ID {student_id} not found.')
+            return redirect(url_for('admin_issue_certificate'))
+            
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        
+        # Calculate hash from the file object stream
+        file_hash = get_file_hash(file)
+        
+        # Save the file thereafter
+        file.save(file_path)
+        
+        try:
+            # 1. Prepare Metadata: StudentID|Name|Date
+            metadata = f"{student_id}|{target_user['name']}|{datetime.datetime.now().isoformat()}"
+            
+            # 2. Convert Hex Hash to Bytes
+            file_hash_bytes = bytes.fromhex(file_hash)
+            
+            # 3. Store on Algorand Blockchain (Box Storage)
+            tx_id = store_certificate_hash(file_hash_bytes, metadata)
+            
+            # 4. Mint as NFT (Optional)
+            asset_id = None
+            if request.form.get('mint_nft'):
+                # Assuming secure_filename already handled and file is accessible
+                # For this demo, asset name based on student ID
+                nft_response = mint_nft(
+                    unit_name="CT-CERT",
+                    asset_name=f"CERT-{student_id}",
+                    ipfs_url=f"https://campustrust.io/verify/{file_hash}" # Placeholder/Reference URL
+                )
+                if nft_response.get('success'):
+                    asset_id = nft_response.get('asset_id')
+                    log_transaction(user['id'], 'ADMIN_MINT_NFT', f"Minted NFT {asset_id} for student {student_id}")
+            
+            # 5. Record in Database
+            conn.execute('''INSERT INTO certificates (user_id, filename, cert_hash, tx_id, asset_id, upload_date)
+                           VALUES (?, ?, ?, ?, ?, ?)''',
+                        (target_user['id'], filename, file_hash, tx_id, asset_id, datetime.datetime.now().isoformat()))
+            conn.commit()
+            
+            success_msg = f'Certificate successfully issued to {target_user["name"]}!'
+            if asset_id:
+                success_msg += f' NFT Minted (Asset ID: {asset_id})'
+            flash(success_msg)
+        except Exception as e:
+            flash(f'Error issuing certificate: {str(e)}')
+        finally:
+            conn.close()
+            
+        return redirect(url_for('dashboard'))
+        
+    return render_template('admin_issue_certificate.html', user=user)
 
 @app.route('/api/badges/share', methods=['POST'])
 def api_share_badge():
@@ -2623,10 +2863,56 @@ def api_share_badge():
         conn.close()
         return jsonify({"success": False, "error": "Badge not found or unauthorized"}), 403
         
+    # Check for duplicate share
+    existing = conn.execute('SELECT id FROM badge_shares WHERE badge_id = ? AND partner_id = ?', 
+                           (badge_id, partner_id)).fetchone()
+    if existing:
+        conn.close()
+        return jsonify({"success": False, "error": "This badge has already been shared with this partner."}), 400
+        
     # Record share
     try:
         conn.execute('INSERT INTO badge_shares (badge_id, partner_id, shared_date) VALUES (?, ?, ?)',
                     (badge_id, partner_id, datetime.datetime.now().isoformat()))
+        conn.commit()
+    except Exception as e:
+        conn.close()
+        return jsonify({"success": False, "error": str(e)}), 500
+        
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route('/api/certificates/share', methods=['POST'])
+def api_share_certificate():
+    user = get_current_user()
+    if not user:
+        return jsonify({"success": False, "error": "Not logged in"}), 401
+        
+    data = request.json
+    cert_id = data.get('cert_id')
+    partner_id = data.get('partner_id')
+    
+    if not cert_id or not partner_id:
+        return jsonify({"success": False, "error": "Missing cert_id or partner_id"}), 400
+        
+    conn = get_db_connection()
+    # Verify certificate belongs to user
+    cert = conn.execute('SELECT id FROM certificates WHERE id = ? AND user_id = ?', (cert_id, user['id'])).fetchone()
+    if not cert:
+        conn.close()
+        return jsonify({"success": False, "error": "Certificate not found or unauthorized"}), 403
+        
+    # Check for duplicate share
+    existing = conn.execute('SELECT id FROM certificate_shares WHERE cert_id = ? AND partner_id = ?', 
+                           (cert_id, partner_id)).fetchone()
+    if existing:
+        conn.close()
+        return jsonify({"success": False, "error": "This certificate has already been shared with this partner."}), 400
+        
+    # Record share
+    try:
+        conn.execute('INSERT INTO certificate_shares (cert_id, partner_id, shared_date) VALUES (?, ?, ?)',
+                    (cert_id, partner_id, datetime.datetime.now().isoformat()))
         conn.commit()
     except Exception as e:
         conn.close()

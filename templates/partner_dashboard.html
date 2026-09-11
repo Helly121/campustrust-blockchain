@@ -138,17 +138,28 @@
                             </div>
                         </div>
 
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="small">
-                                <i class="fas fa-cube text-primary me-1"></i> Blockchain Anchored
+                        <div class="mt-4 pt-3 border-top">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="small text-muted">
+                                    <i class="fas fa-cube text-primary me-1"></i> Blockchain Anchored
+                                </div>
+                                {% if cert.asset_id %}
+                                <span class="badge bg-warning text-dark rounded-pill shadow-sm">
+                                    <i class="fas fa-university me-1"></i> Issued by Admin (NFT)
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary rounded-pill shadow-sm">
+                                    <i class="fas fa-user-edit me-1"></i> Self-Uploaded by Student
+                                </span>
+                                {% endif %}
                             </div>
                             <div class="d-flex gap-2">
-                                <a href="https://lora.algokit.io/testnet/transaction/{{ cert.tx_id }}" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold">
-                                    Verify Tx
+                                <a href="https://lora.algokit.io/testnet/transaction/{{ cert.tx_id }}" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold flex-grow-1">
+                                    <i class="fas fa-search me-1"></i> Verify Tx
                                 </a>
                                 {% if cert.asset_id %}
-                                <a href="https://lora.algokit.io/testnet/asset/{{ cert.asset_id }}" target="_blank" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold text-dark">
-                                    View NFT
+                                <a href="https://lora.algokit.io/testnet/asset/{{ cert.asset_id }}" target="_blank" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold text-dark flex-grow-1">
+                                    <i class="fas fa-gem me-1"></i> View NFT
                                 </a>
                                 {% endif %}
                             </div>
